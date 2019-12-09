@@ -6,7 +6,7 @@
 #include <time.h>
 
 
-#define PASSO 1 						/* Entita spostamento della vespa */
+						
 #define SU 65 							/* Freccia su */
 #define GIU 66 						/* Freccia giu */
 #define SINISTRA 68					/* Freccia sinsitra */
@@ -65,13 +65,17 @@ char ring[MAXX_R][MAXY_R] = {
 {'#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#'}
 };
 int num_vite=3;
+int PASSO = 1;									/* Entita spostamento */
+int num_fantasmi = 4;
 int punti = 0;
+int punti_caramelloni = 10;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;/*creo e inizializzo il semaforo*/
 
 
 void * ghost(void * parametri);
 void * pacman(void * parametri);
 void * areaGioco(void * parametri);
+
 
 
 
@@ -116,13 +120,19 @@ void * pacman(void * parametri){
 	while(num_vite>0)
 	{
 		char c;
+
+	   	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+		mvaddch(pos_pacman->y,pos_pacman->x,'C');
+		refresh();
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/		
+		
 		c=getch();
 
 		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
 		mvaddch(pos_pacman->y,pos_pacman->x,' ');
 		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 
-			switch(c){// Mi sposto in base al tasto che ho premuto
+			switch(c){// Mi sposto in base al tasto che ho premu to
 					 // controllando ogni volta di non uscire dai limiti
 				case SU:
 					if(pos_pacman->y>1){
@@ -136,7 +146,7 @@ void * pacman(void * parametri){
 					break;
 
 				case GIU:
-					if(pos_pacman->y<MAXY_R-1){
+					if(pos_pacman->y<MAXX_R-1){
 						pos_pacman->y+=1; 
 					}
 
@@ -158,15 +168,20 @@ void * pacman(void * parametri){
 
 				case DESTRA:
 
-					if(pos_pacman->x < MAXX_R-1){
+					if(pos_pacman->x < MAXY_R-1){
 					pos_pacman->x+=1;
 					}
+
 
 					if(ring[pos_pacman->y][pos_pacman->x] == '#'){
 						pos_pacman->x-=1;
 					}
 					break;
 
+		}
+
+		if(ring[pos_pacman->y][pos_pacman->x] == '$'){//Caramellone preso 
+			punti += punti_caramelloni;
 		}
 		
 		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
@@ -258,12 +273,14 @@ void * ghost(void * parametri){
 
 void * areaGioco(void * parametri){
 	int i,j;
+	int cambio_caramelloni = 0;
 	pos_A * posizioni = (pos_A *) parametri;
 	pos pos_caramelloni[3];
 
+
   	pthread_mutex_lock(&mutex);
 
-  	for(i = 0 ; i< MAXX_R ; i++){
+  	for(i = 0 ; i< MAXX_R ; i++){//Disegno il ring 
 		for(j = 0 ; j < MAXY_R ; j++){
 			mvaddch(i,j,ring[i][j]);
      		refresh();
@@ -271,17 +288,23 @@ void * areaGioco(void * parametri){
 		}
   	}
   	pthread_mutex_unlock(&mutex);
-	while (num_vite>0){
+	
+	time_t tempo_salvato = time(NULL);	
+	
+	while (num_vite>0){ //inizio ciclo di gioco
 
-		time_t tempo_salvato = time((time_t*)NULL);
+		if((time(NULL)-tempo_salvato) > 10){                           //Se sono passati dieci secondi... è Giusto? 
 
-		if((time((time_t*)NULL)-tempo_salvato)>10){                                         
-			
 			for(i=0;i<3;++i){                      
 				pthread_mutex_lock(&mutex);
-				mvaddch(pos_caramelloni[i].y,pos_caramelloni[i].x,' ');//cancello le vecchie trappole
+				mvaddch(pos_caramelloni[i].x,pos_caramelloni[i].y,' ');//cancello i vecchi caramelloni
 				pthread_mutex_unlock(&mutex);
+				if(cambio_caramelloni = 0){
+					ring[pos_caramelloni[i].y][pos_caramelloni[i].x] = ' ';
+				}
 		 	}
+
+			cambio_caramelloni = 1;
 	  		
 			for(i = 0; i<3;i++){
 				do{
@@ -289,17 +312,32 @@ void * areaGioco(void * parametri){
 					pos_caramelloni[i].y = rand()%MAXY_R;
 					pos_caramelloni[i].x = rand()%MAXX_R;
 				
-				}while(ring[pos_caramelloni[i].y][pos_caramelloni[i].x] == '#');					
+				}while(  !(
+							 (ring[pos_caramelloni[i].x][pos_caramelloni[i].y] != '#') &&        //sin che sta sul bordo
+							 (pos_caramelloni[i].y < MAXX_R) && 
+							 (pos_caramelloni[i].x < MAXY_R) &&                                  //Sin che è fuori dal ring
+							 (pos_caramelloni[i].y > 0) &&                                      
+							 (pos_caramelloni[i].x > 0)                                          //Sin che sta fuori dal ring ma in alto
+						  )											                             
+                      ); 
+
+				ring[pos_caramelloni[i].y][pos_caramelloni[i].x] = '$';                                     
 			}
 
-			for(i=0;i<3;++i){
+			for(i=0;i < 3;++i){
 				pthread_mutex_lock(&mutex);
-				mvaddch(pos_caramelloni[i].y,pos_caramelloni[i].x,'$');//cancello le vecchie trappole
+				mvaddch(pos_caramelloni[i].x,pos_caramelloni[i].y,'$');
 				pthread_mutex_unlock(&mutex);
 		  	}
 
 		  	tempo_salvato=time((time_t*)NULL);//Mi salvo il tempo in cui le ho generate		
 		}
+
+		if(cambio_caramelloni == 1){
+			time_t tempo_salvato = time(NULL);
+			cambio_caramelloni = 0;	
+		}		
+
 		/*controllo la collisione fra pacman e fantasma*/
 		if((posizioni->pac->x == posizioni->gost->x) && posizioni->pac->y == posizioni->gost->y){
 			num_vite--;
@@ -311,12 +349,33 @@ void * areaGioco(void * parametri){
 
 		pthread_mutex_lock(&mutex);
 		mvprintw(0,MAXY_R+3,"Vite: %d",num_vite);/*Stampo il numero di vite*/
+		mvprintw(1,MAXY_R+3,"punti: %d",punti);/*Stampo il numero di vite*/
 	  	curs_set(0);
 	  	refresh();
 		pthread_mutex_unlock(&mutex);
 		usleep(50000);
-    }; /* ciclo finchè il contadino non perde tutte le vite */
+    }; /* ciclo finchè pacman non perde tutte le vite */
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//Aggiustare l'assegnamento dei punti dei Caramelloni 
+
+
+
 
 
 

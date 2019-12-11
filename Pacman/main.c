@@ -1,12 +1,12 @@
 #include "ghost.h"
 
 void * areaGioco(void * parametri);
-
+//Creare il makefile 
 int main(){
 	int i,j;
 	pthread_t pacmanID, gostID, areaGiocoID;
 	pos pos_gost,pos_pacman;
-	pos_A area;
+	pos_A area, ghost_param;
 
     srand(time((time_t*)NULL));
     initscr();
@@ -15,9 +15,12 @@ int main(){
 
 	area.pac = &pos_pacman;
 	area.gost = &pos_gost;
+	
+	ghost_param.pac = &pos_pacman; 
+	ghost_param.gost = &pos_gost;
 
 	pthread_create(&pacmanID,NULL,&pacman,(void*)&pos_pacman);
-	pthread_create(&gostID,NULL,&ghost,(void*)&pos_gost);
+	pthread_create(&gostID,NULL,&ghost,(void*)&ghost_param);
 	pthread_create(&areaGiocoID,NULL,&areaGioco,(void*)&area);
 	
 	while(num_vite > 0);

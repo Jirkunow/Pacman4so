@@ -40,59 +40,6 @@ void * ghost(void * parametri){
 
 
 	pos_gost = Passo_ghost(pos_gost , pacman);
-    /*switch(rand()%3)
-    {
-      case 0://se rand%3 mi ha dato 0 non mi sposto in orizzontale
-        dx=0;
-        break;
-      case 1://se rand%3 mi ha dato 1 mi muovo a destra
-        dx=PASSO;
-        break;
-      case 2://se rand%3 mi ha dato 2 mi muovo a sinistra
-        dx=-PASSO;
-        break;
-      default:
-        perror("Caso impossibile.\n");
-    }
-
-    if(pos_gost->x+dx<1 || pos_gost->x+dx>=MAXX_R){ // Se il movimento mi fa uscire dai limiti inverto la direzione
-		dx=-dx;
-	}
-	
-	if(ring[pos_gost->y][pos_gost->x+dx]=='#'){
-		dx=-dx;
-	}else{
-    	pos_gost->x+=dx;                                      
-	}
-
-    switch(rand()%3)
-    {
-      case 0://se rand%3 mi ha dato 0 non mi sposto in verticale
-        dy=0;
-        break;
-      case 1://se rand%3 mi ha dato 1 mi muovo in basso
-        dy=PASSO;
-        break;
-      case 2://se rand%3 mi ha dato 2 mi muovo in alto
-        dy=-PASSO;
-        break;
-      default:
-        perror("Caso impossibile.\n");
-    }
-
-    if(pos_gost->y+dy<1 || pos_gost->y+dy>=MAXY_R){// Se il movimento mi fa uscire dai limiti inverto la direzione
-		dy=-dy;
-    }
-                                      
-	if(ring[pos_gost->y+dy][pos_gost->x]=='#'){
-		dy=-dy;
-	}else{
-		pos_gost->y+=dy;
-	}*/
-
-	
-
-	
 
     pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
     mvaddch(pos_gost->y,pos_gost->x,'M');
@@ -103,132 +50,110 @@ void * ghost(void * parametri){
 
 }
 
-
 pos * Passo_ghost(pos *ghost, pos *pacman){
 
-	pos distanza;
-	float modulo_n = 0;
-	float modulo_n2 = 0;
-	ERRORE codice_errore = {VAR_MV_GHOST_INIT, 1};
-
-	distanza.x = ghost->x - pacman->x;
-	distanza.y = ghost->y - pacman->y;
-
-	modulo_n = sqrt((float)((float)distanza.x * (float)distanza.x) - ((float)distanza.y * (float)distanza.y));
-
-	do{
-		if(codice_errore.cod != 0){
-			distanza.x = ghost->x - pacman->x +1;
-			modulo_n2 =  sqrt((float)((float)distanza.x * (float)distanza.x) - ((float)distanza.y * (float)distanza.y));
-
-			if(modulo_n2 >= modulo_n && codice_errore.cod != 1 ){
-				distanza.x = ghost->x - pacman->x -2;
-				modulo_n2 =  sqrt((float)((float)distanza.x * (float)distanza.x) - ((float)distanza.y * (float)distanza.y));
-
-				if(modulo_n2 >= modulo_n && codice_errore.cod != 2){
-					distanza.x = ghost->x - pacman->x;
-					distanza.y = ghost->y - pacman->y +1;
-					modulo_n2 =  sqrt((float)((float)distanza.x * (float)distanza.x) - ((float)distanza.y * (float)distanza.y));
-
-					if(modulo_n2 >= modulo_n && codice_errore.cod != 3){
-						ghost->y--;
-						codice_errore.cod = 3;				
-					}else{
-						switch(rand()%3){
-						  case 0://se rand%3 mi ha dato 0 non mi sposto in orizzontale
-							dx=0;
-							break;
-						  case 1://se rand%3 mi ha dato 1 mi muovo a destra
-							dx=PASSO;
-							break;
-						  case 2://se rand%3 mi ha dato 2 mi muovo a sinistra
-							dx=-PASSO;
-							break;
-						  default:
-							perror("Caso impossibile.\n");
-						}
-
-						if(pos_gost->x+dx<1 || pos_gost->x+dx>=MAXX_R){ // Se il movimento mi fa uscire dai limiti inverto la direzione
-							dx=-dx;
-						}
-						
-						if(ring[pos_gost->y][pos_gost->x+dx]=='#'){
-							dx=-dx;
-						}else{
-							pos_gost->x+=dx;                                      
-						}
-
-						switch(rand()%3)
-						{
-						  case 0://se rand%3 mi ha dato 0 non mi sposto in verticale
-							dy=0;
-							break;
-						  case 1://se rand%3 mi ha dato 1 mi muovo in basso
-							dy=PASSO;
-							break;
-						  case 2://se rand%3 mi ha dato 2 mi muovo in alto
-							dy=-PASSO;
-							break;
-						  default:
-							perror("Caso impossibile.\n");
-						}
-
-						if(pos_gost->y+dy<1 || pos_gost->y+dy>=MAXY_R){// Se il movimento mi fa uscire dai limiti inverto la direzione
-							dy=-dy;
-						}
-										                  
-						if(ring[pos_gost->y+dy][pos_gost->x]=='#'){
-							dy=-dy;
-						}else{
-							pos_gost->y+=dy;
-						}
-					}
-				}else{
-					ghost->y++;	
-					codice_errore.cod = 2;	
-				}				
-			}else{
-				ghost->x--;
-				codice_errore.cod = 1;	
-			}
-		}else{
-			ghost->x++;
-			codice_errore.cod = 0;	
+	char visualizza_errore;
+	int codice_errore = 1;
+	int rand_try,dp;
+	
+	if(ghost->x == pacman->x){ //controllo se pacman ed il fantasmino sono sulla stessa linea 
+		if((ghost->y - pacman->y) < 0){
+			dp = 1;
+		}else{ 
+			dp = -1;
 		}
+		if(ring[ghost->y+dp][ghost->x]!='#'){
+			ghost->y += dp;	
+			return ghost;	
+		}
+	}
+	if(ghost->y == pacman->y){
+		if((ghost->x - pacman->x) < 0){
+			dp = 1;
+		}else{ 
+			dp = -1;
+		}
+		if(ring[ghost->y][ghost->x+dp]!='#'){
+			ghost->x += dp;	
+			return ghost;
+		}
+			
+	}
 
-		switch(codice_errore.cod){
+	while(codice_errore){ //Se arrivo qua vuol dire che pacman ed il fantasmino non sono sulla stessa linea allora mi muovo a caso
+
+		rand_try = rand()%4;
+
+		switch(rand_try){
+		  case 0://se rand%4 mi ha dato 0 mi sposto verso il basso
+		    ghost->x++;
+		    break;
+		  case 1://se rand%4 mi ha dato 1 mi sposto verso l'alto
+		    ghost->x--;
+		    break;
+		  case 2://se rand%4 mi ha dato 2 mi sposto verso destra
+		    ghost->y++;
+		    break;
+		  case 3://se rand%4 mi ha dato 3 mi sposto verso sinistra
+			ghost->y--;
+			break;
+		  default:
+				visualizza_errore = rand_try + 48;
+			    pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+				mvaddch(0,70,visualizza_errore);
+				refresh();
+				pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+		    perror("Caso impossibile.\n");
+    	}
+		
+		switch(rand_try){//controllo collisioni 
 
 			case 0:
 				if(ring[ghost->y][ghost->x]=='#'){
 					ghost->x--;		
-					codice_errore.fail = 1;			
-				}
+					codice_errore = 1;			
+				}else{
+					codice_errore = 0;
+					}
 				break;
 			case 1:
 				if(ring[ghost->y][ghost->x]=='#'){
 					ghost->x++;	
-					codice_errore.fail = 1;		
-				}
+					codice_errore = 1;		
+				}else{
+					codice_errore = 0;
+					}
 				break;
 			case 2:
 				if(ring[ghost->y][ghost->x]=='#'){
 					ghost->y--;	
-					codice_errore.fail = 1;				
-				}
+					codice_errore = 1;				
+				}else{
+					if(ghost->x < 0 || ghost->x > MAXX_R){
+						ghost->x = -ghost->x;
+					}
+					
+					codice_errore = 0;
+					}
 				break;
 			case 3:
 				if(ring[ghost->y][ghost->x]=='#'){
 					ghost->y++;	
-					codice_errore.fail = 1;				
-				}
+					codice_errore = 1;				
+				}else{
+					if(ghost->x < 0 || ghost->x > MAXX_R){
+						ghost->x = -ghost->x;
+					}
+					codice_errore = 0;
+					}
 				break;
-		}
-
-	}while(codice_errore.fail);
-
+		}		
+	}
 	return ghost;
-
+	
 }
+
+
 
 
 

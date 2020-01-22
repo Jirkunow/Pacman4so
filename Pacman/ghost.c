@@ -1,56 +1,74 @@
 #include "ghost.h"
 
-int num_fantasmi = 4;
+void * ghost(void *parametri){		
+	pos_C* pos_char = (pos_C*) parametri;/*Converto la mia variabile in input*/
+	int dx,dy;
+	int i = 0;
+	int id = pos_char->id;
+	pos* pacman = (pos*) malloc(sizeof(pos));;
+	pos* pos_gost = (pos*) malloc(sizeof(pos));
+	int sulla_caramella = 0;
 
-void * ghost(void * parametri){
+	pos_gost->x = pos_char->xn;
+	pos_gost->y = pos_char->yn;
 
-  pos_A * pos_char = (pos_A*) parametri;/*Converto la mia variabile in input*/
-  int dx,dy;
-  int i = 0;
-  pos* pacman = pos_char->pac;
-  pos* pos_gost = pos_char->gost;
-  int sulla_caramella = 0;
-  pos_gost->x=15;//Il fantasma inizierà al centro del ring 
-  pos_gost->y=21;
+	usleep(500);
 
-  pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-  mvaddch(pos_gost->y,pos_gost->x,'M');
-  refresh();
-  pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
-
-  while(num_vite>0){
-
-	for(i = 0; i < numero_caramelline+1; i++){
-		if(caramelline[i].x == pos_gost->y  && caramelline[i].y == pos_gost->x ){
-				sulla_caramella = 1;
-		}
-	}
+/*	pthread_mutex_lock(&mutex);//Inizio sezione critica
+	mvaddch(pos_gost->y,pos_gost->x,'M');
+	refresh();
+	pthread_mutex_unlock(&mutex);//Fine sezione critica
+*/
+    while(num_vite>0){
 	
-    usleep(500000);	
-    pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-    mvaddch(pos_gost->y,pos_gost->x,' ');
-    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+		pacman->x = BFC[0].xn;
+		pacman->y = BFC[0].yn;
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 
-    if(sulla_caramella == 1){
-        pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-    	mvaddch(pos_gost->y,pos_gost->x,'.');
-		sulla_caramella = 0;
-        pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
-	}
+		for(i = 0; i < numero_caramelline+1; i++){
+			if(caramelline[i].x == pos_gost->y  && caramelline[i].y == pos_gost->x ){
+					sulla_caramella = 1;
+			}
+		}
+	
+    	usleep(500000);	
+
+		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+		mvaddch(pos_gost->y,pos_gost->x,' ');
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+
+		if(sulla_caramella == 1){
+		    pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+			mvaddch(pos_gost->y,pos_gost->x,'.');
+			refresh();
+			sulla_caramella = 0;
+		    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+		}
+		
+		pos_char->x_old = pos_gost->x;
+		pos_char->y_old = pos_gost->y;
 
 
-	pos_gost = Passo_ghost(pos_gost , pacman);
+		*pos_gost = Passo_ghost(pos_gost , pacman);
 
-    pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-    mvaddch(pos_gost->y,pos_gost->x,'M');
-    refresh();
-    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+		pos_char->xn = pos_gost->x;
+		pos_char->yn = pos_gost->y;	
 
-  }
+		if(pos_char->xn  != pos_char->x_old  || pos_char->yn  != pos_char->y_old){
+			BFCaggiorna(pos_char);
+		}
+
+/*		pthread_mutex_lock(&mutex);//Inizio sezione critica
+		mvaddch(pos_gost->y,pos_gost->x,'M');
+		refresh();
+		pthread_mutex_unlock(&mutex);//Fine sezione critica
+*/
+    }
 
 }
 
-pos * Passo_ghost(pos *ghost, pos *pacman){
+pos Passo_ghost(pos *ghost, pos *pacman){
 
 	char visualizza_errore;
 	int codice_errore = 1;
@@ -64,7 +82,7 @@ pos * Passo_ghost(pos *ghost, pos *pacman){
 		}
 		if(ring[ghost->y+dp][ghost->x]!='#'){
 			ghost->y += dp;	
-			return ghost;	
+			return *ghost;	
 		}
 	}
 	if(ghost->y == pacman->y){
@@ -75,7 +93,7 @@ pos * Passo_ghost(pos *ghost, pos *pacman){
 		}
 		if(ring[ghost->y][ghost->x+dp]!='#'){
 			ghost->x += dp;	
-			return ghost;
+			return *ghost;
 		}
 			
 	}
@@ -149,7 +167,7 @@ pos * Passo_ghost(pos *ghost, pos *pacman){
 				break;
 		}		
 	}
-	return ghost;
+	return *ghost;
 	
 }
 

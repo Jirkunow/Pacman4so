@@ -179,12 +179,12 @@ void BBPadd(pos_B proiettile){
 	scriviLog(buff_size,"Buff size in BBPadd");
 	scriviLog(proiettile.id,"ID diproiettile in BBPadd");
 		
-	BBP[buff_size-1].vivo = proiettile.vivo;
-	BBP[buff_size-1].x = proiettile.x;
-	BBP[buff_size-1].y = proiettile.y;
-	BBP[buff_size-1].dir = proiettile.dir;
-	BBP[buff_size-1].id = proiettile.id;
-	BBP[buff_size-1].ready = proiettile.ready;
+	BBP[proiettile.id].vivo = proiettile.vivo;
+	BBP[proiettile.id].x = proiettile.x;
+	BBP[proiettile.id].y = proiettile.y;
+	BBP[proiettile.id].dir = proiettile.dir;
+	BBP[proiettile.id].id = proiettile.id;
+	BBP[proiettile.id].ready = proiettile.ready;
 
 
 	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
@@ -210,15 +210,16 @@ void BBPaggiorna(pos_B proiettile){
 }
 
 pos_B BBPcut(int pos){
-	pos_B cout;
-	
-	if(buff_size >= 1){
+	pos_B *cout = &(BBP[pos]);
 
-		for(int i = pos; i<buff_size;i++){
+	cout = NULL;
+	cout = (pos_B*)calloc(sizeof(pos_B*),1);
+	
+	if(buff_size > 0){
+		for(int i = pos; i<buff_size-1;i++){
 			BBP[i] = BBP[i+1];
 			BBP[i].id =i; 
 		}
-
 	}
 
 	buff_size--;
@@ -236,7 +237,7 @@ pos_B BBPcut(int pos){
 	//BBP = (pos_B*) realloc(BBP,sizeof(pos_B)*buff_size);
     pthread_mutex_unlock(&mutex);//Fine sezione critica
 */
-	return cout;
+	return *cout;
 }
 
 pos_B* BBPinit(){
@@ -259,30 +260,30 @@ int BBPricerca(pos_B proiettile,int i){
 
 void * Shot(void *parametri){
 	pos_B ausilio;
-	int *id_punt = (int*) parametri;
-	int id = *id_punt;
+	int *id = (int*) parametri;
 
-	scriviLog(BBP[id].id,"Shot con id");
-	scriviLog(BBP[id].vivo,"Shot con vivo");
+	scriviLog(BBP[*id].id,"Shot con id");
+	scriviLog(BBP[*id].vivo,"Shot con vivo");
 
-	BBP[id].ready = 1;
+	BBP[*id].ready = 1;
 	do{
-		scriviLog(BBP[id].id,"Shot con id");
-		scriviLog(BBP[id].x,"Shot con x");
-		scriviLog(BBP[id].y,"Shot con y");
+		scriviLog(BBP[*id].id,"Shot con id");
+		scriviLog(BBP[*id].x,"Shot con x");
+		scriviLog(BBP[*id].y,"Shot con y");
 
-		BBP[id] = incrementaProiettile(BBP[id]);
+		BBP[*id] = incrementaProiettile(BBP[*id]);
+		*id = BBP[*id].id;
 
-		scriviLog(BBP[id].vivo,"Shot con vivo");
+		scriviLog(BBP[*id].vivo,"Shot con vivo");
 
-	}while(BBP[id].vivo == 1);
+	}while(BBP[*id].vivo == 1);
 
-	scriviLog(BBP[id].id,"Shot con id (DOPO)");
-	scriviLog(BBP[id].vivo,"Shot con vivo (DOPO)");
+	scriviLog(BBP[*id].id,"Shot con id (DOPO)");
+	scriviLog(BBP[*id].vivo,"Shot con vivo (DOPO)");
 	
 	scriviLog(buff_size,"buff_size (PRIMA)");	
 
-	ausilio = BBPcut(BBP[id].id);
+	ausilio = BBPcut(BBP[*id].id);
 
 	scriviLog(buff_size,"buff_size (DOPO)");
 		
@@ -502,7 +503,7 @@ void trigger(pos_C *pg){
 		//scriviLog(proiettile[i].y,"sei dentro trigger post incremento:proiettile[i].y");
 		id_bulli_dim++;
 
-		pthread_create(&(id_bulli[id_bulli_dim-1]),NULL,&Shot,(void*)&(proiettile[i].id ));
+		pthread_create(&(id_bulli[id_bulli_dim-1]),NULL,&Shot,(void*)&(BBP[buff_size-1].id ));
 
 		usleep(500);
 	}	

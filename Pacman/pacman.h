@@ -35,6 +35,7 @@ typedef struct{
 	int id;
 	int x_old;
   	int y_old;
+	pthread_t id_t;
 }pos_B;
 
 typedef struct{
@@ -66,6 +67,8 @@ extern pos_C *BFC;
 extern int buffC_size;
 extern int id_personaggi;
 extern int morte;
+extern pthread_t id_bulli[4000];
+extern int id_bulli_dim;
 
 void * pacman(void * parametri);
 void pacmanMove(pos *pos_pacman);

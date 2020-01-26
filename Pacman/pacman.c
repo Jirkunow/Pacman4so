@@ -55,6 +55,8 @@ int buffC_size = 0;
 int id_personaggi = 0;
 int id_bulletti = 0;
 int morte = 0;
+pthread_t id_bulli[4000];
+int id_bulli_dim = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;/*creo e inizializzo il semaforo*/
 
 void * pacman(void * parametri){
@@ -210,9 +212,13 @@ void BBPaggiorna(pos_B proiettile){
 pos_B BBPcut(int pos){
 	pos_B cout;
 	
-	for(int i = pos; i<buff_size;i++){
-		BBP[i] = BBP[i+1];
-		BBP[i].id =i; 
+	if(buff_size >= 1){
+
+		for(int i = pos; i<buff_size;i++){
+			BBP[i] = BBP[i+1];
+			BBP[i].id =i; 
+		}
+
 	}
 
 	buff_size--;
@@ -252,38 +258,43 @@ int BBPricerca(pos_B proiettile,int i){
 }
 
 void * Shot(void *parametri){
-	pos_B *proiettile = (pos_B*) parametri;
-	int id = proiettile->id;
-	scriviLog(id,"Sei dentro Shot");
-	
-/*	for(int i = 0; i<buff_size;i++){
-		if(BBPricerca(*proiettile,i)){
-			exit(0);
-		}
-	}*/
+	pos_B ausilio;
+	int *id_punt = (int*) parametri;
+	int id = *id_punt;
 
+	scriviLog(BBP[id].id,"Shot con id");
+	scriviLog(BBP[id].vivo,"Shot con vivo");
+
+	BBP[id].ready = 1;
 	do{
-		scriviLog(id,"Sei dentro Shot nel do-while");
-		usleep(500);
+		scriviLog(BBP[id].id,"Shot con id");
+		scriviLog(BBP[id].x,"Shot con x");
+		scriviLog(BBP[id].y,"Shot con y");
 
-//		proiettile = BBPfindID(id);
-		
-		
-		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-		*proiettile = incrementaProiettile(*proiettile);
+		BBP[id] = incrementaProiettile(BBP[id]);
 
-		if(proiettile->ready == 0){
-			proiettile->ready = 1;
-		}
-		pthread_mutex_unlock(&mutex);/*fine sezione critica*/
-		usleep(50000000);
-		BBPaggiorna(*proiettile);	
+		scriviLog(BBP[id].vivo,"Shot con vivo");
 
-	}while(proiettile->vivo);
+	}while(BBP[id].vivo == 1);
+
+	scriviLog(BBP[id].id,"Shot con id (DOPO)");
+	scriviLog(BBP[id].vivo,"Shot con vivo (DOPO)");
+	
+	scriviLog(buff_size,"buff_size (PRIMA)");	
+
+	ausilio = BBPcut(BBP[id].id);
+
+	scriviLog(buff_size,"buff_size (DOPO)");
 		
 }
 
 pos_B incrementaProiettile(pos_B proiettile){
+
+	if(BBP[proiettile.id].ready){
+		usleep(500000);
+	}
+
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/		
 
 	proiettile.x_old=proiettile.x;
 	proiettile.y_old=proiettile.y;	
@@ -291,20 +302,55 @@ pos_B incrementaProiettile(pos_B proiettile){
 	switch(proiettile.dir){
 
 		case'U':
-			proiettile.y = proiettile.y-1;
+			if(proiettile.y>1){
+				proiettile.y = proiettile.y-1;
+			}else{
+				proiettile.vivo = 0;
+			}
+
+			if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+			}
 			break;
 
 		case'D':
-			proiettile.y = proiettile.y +1;
+			if(proiettile.y<MAXX_R-1){
+				proiettile.y = proiettile.y +1;
+
+			}else{
+				proiettile.vivo = 0;
+			}
+
+			if(ring[proiettile.y][proiettile.x] == '#'){
+				proiettile.vivo = 0;
+			}
 			break;
 
 		case'L':
-			proiettile.x =proiettile.x-1;
+			if(proiettile.x>1){
+				proiettile.x =proiettile.x-1;
+			}else{
+				proiettile.vivo = 0;
+			}
+
+			if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+			}
 			break;
 		case'R':
-			proiettile.x =proiettile.x+1;
+			if(proiettile.x < MAXY_R){
+				proiettile.x =proiettile.x+1;
+
+			}else{
+				proiettile.vivo = 0;
+			}
+
+			if(ring[proiettile.y][proiettile.x] == '#'){
+				proiettile.vivo = 0;
+			}
 			break;
 	}
+	pthread_mutex_unlock(&mutex);/*fine sezione critica*/	
 
 	return proiettile;
 }
@@ -315,11 +361,11 @@ pos_B *BBPfindID(int id){
 	for(int i = 0; i<buff_size;i++){
 		if(BBP[i].id == id){
 			*tmp_hlp = BBP[i];
-    		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/			
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/			
 			return tmp_hlp;		
 		}
 	}
-    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 	return NULL;
 }
 
@@ -364,7 +410,7 @@ void BFCadd(pos_C pg){
 	BFC[buffC_size-1].xn = pg.xn;
 	BFC[buffC_size-1].yn = pg.yn;
 
-    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+   	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 }
 
 pos_C BFCfindID(int id, int *index){
@@ -418,24 +464,20 @@ void BFCaggiorna(pos_C *pg){
 void scriviLog(int msg, char* nome){
   FILE *fd;
 
-    /* apre il file in scrittura */
   fd=fopen("log.txt", "a");
-  if( fd==NULL ) {
+  if( fd==NULL ){
     perror("Errore in apertura del file");
     exit(1);
   }
-    /* scrive il numero */
+
   fprintf(fd, "%s = %d\n\n",nome, msg);
 
-    /* chiude il file */
   fclose(fd);
 }
 
 void trigger(pos_C *pg){
 	char direzioni[4] = {'U','D','L','R'};
 	pos_B proiettile[4];
-	int indez = 0;
-	pthread_t id_bulli[4];
 
 	scriviLog(SPACE,"sei dentro trigger");
 
@@ -451,21 +493,16 @@ void trigger(pos_C *pg){
 		proiettile[i].y = pg->yn;
 		proiettile[i].ready = 0;
 
-
-		scriviLog(proiettile[i].x ,"sei dentro trigger for zone:proiettile[i].x ");
-		scriviLog(proiettile[i].y,"sei dentro trigger for zone:proiettile[i].y");
-		
-		proiettile[i] = incrementaProiettile(proiettile[i]);
-
 		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 
-		
+		//scriviLog(proiettile[i].x ,"sei dentro trigger for zone:proiettile[i].x ");
+		proiettile[i] = incrementaProiettile(proiettile[i]);
+
 		BBPadd(proiettile[i]);
+		//scriviLog(proiettile[i].y,"sei dentro trigger post incremento:proiettile[i].y");
+		id_bulli_dim++;
 
-		scriviLog(proiettile[i].x,"sei dentro trigger post incremento:proiettile[i].x ");
-		scriviLog(proiettile[i].y,"sei dentro trigger post incremento:proiettile[i].y");
-
-		pthread_create(&(id_bulli[i]),NULL,&Shot,(void*)&(BBP[buff_size-1]));
+		pthread_create(&(id_bulli[id_bulli_dim-1]),NULL,&Shot,(void*)&(proiettile[i].id ));
 
 		usleep(500);
 	}	

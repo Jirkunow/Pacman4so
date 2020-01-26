@@ -84,8 +84,8 @@ void * areaGioco(void * parametri){
 	  	curs_set(0);
 	  	refresh();
 		pthread_mutex_unlock(&mutex);
-		usleep(500);
-    }; /* ciclo finchè pacman non perde tutte le vite */
+		usleep(5000);
+    	}; /* ciclo finchè pacman non perde tutte le vite */
 
 }
 
@@ -94,20 +94,18 @@ void gestoreProiettili(pos_C *posizioni){
 	int w =buff_size;
 	int ok = 0;
 	pos_B ausilio;
-	if(buff_size>0){
-		scriviLog(BBP[0].x,"Dentro gestore proiettili pre ciclo");
-	}
 
 	for(int i = 0; i<buff_size; i++){
 		ok = 1;
 		if(BBP[i].ready && BBP[i].vivo){
-			scriviLog(buff_size,"Dentro gestore proiettili in ciclo buff");
+			//scriviLog(buff_size,"Dentro gestore proiettili in ciclo buff");
 			scriviLog(BBP[i].id,"Dentro gestore proiettili in ciclo id");
 
 			for(int j = 0; j < numero_caramelline+1 ; j++){
 				if(BBP[i].x == caramelline[j].x && BBP[i].y == caramelline[j].y){
 					BBP[i].vivo = 0;
 					mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
+					refresh();
 					ok = 0;					
 				}
 			}
@@ -115,10 +113,9 @@ void gestoreProiettili(pos_C *posizioni){
 			if(ring[BBP[i].x][BBP[i].y] == '#'){
 				BBP[i].vivo = 0;
 				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
-				ausilio=BBPcut(BBP[i].id);
+				refresh();
 				ok = 0;	
 			}
-
 
 			if(BBP[i].x == posizioni[0].xn && BBP[i].y == posizioni[0].yn){
 				num_vite--;
@@ -126,25 +123,30 @@ void gestoreProiettili(pos_C *posizioni){
 				posizioni[0].yn =MAXY_R/2;
 				BBP[i].vivo = 0;
 				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
-				ausilio=BBPcut(BBP[i].id);
+				refresh();
 				ok = 0;
 			}
 			for(int j = 1; j < 6 ; j++){
-				if(BBP[i].x == posizioni[j].xn && BBP[i].y == posizioni[j].yn){
-					posizioni[j].xn=14;
-					posizioni[j].yn =21-i;
+				if(BBP[i].x == BFC[j].xn && BBP[i].y == BFC[j].yn){
+					BFC[j].xn=14;
+					BFC[j].yn =21-i;
 					BBP[i].vivo = 0;
 
-					mvaddch(posizioni[j].yn,posizioni[j].xn,'M');
+					mvaddch(BFC[j].yn,BFC[j].xn,'M');
 					mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
 					refresh();
-					ausilio=BBPcut(BBP[i].id);
 					ok = 0;
 				}		
 			}
 			if(ok){
 				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
 				mvaddch(BBP[i].y,BBP[i].x ,'o');
+				refresh();
+			}
+			if(!(BBP[i].vivo)){
+				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
+				mvaddch(BBP[i].y,BBP[i].x ,'+');
+				refresh();
 			}
 			refresh();
 			scriviLog(BBP[i].id,"Sto uscendo dal ciclo id");

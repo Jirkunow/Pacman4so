@@ -36,6 +36,8 @@ typedef struct{
 	int x_old;
   	int y_old;
 	pthread_t id_t;
+	int checked; 
+	int t_vivo;
 }pos_B;
 
 typedef struct{

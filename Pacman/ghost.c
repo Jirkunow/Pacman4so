@@ -49,6 +49,9 @@ void * ghost(void *parametri){
 		pos_char->x_old = pos_gost->x;
 		pos_char->y_old = pos_gost->y;
 
+		pos_gost->x = pos_char->xn;
+		pos_gost->y = pos_char->yn;	
+
 
 		*pos_gost = Passo_ghost(pos_gost , pacman);
 

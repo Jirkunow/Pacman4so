@@ -81,12 +81,13 @@ void * areaGioco(void * parametri){
 		pthread_mutex_lock(&mutex);
 		mvprintw(0,MAXY_R+3,"Vite: %d",num_vite);/*Stampo il numero di vite*/
 		mvprintw(1,MAXY_R+3,"punti: %d",punti);/*Stampo il numero di vite*/
+		mvprintw(2,MAXY_R+3,"caramelline restanti: %d",numero_caramelline);/*Stampo il numero di vite*/
 	  	curs_set(0);
 	  	refresh();
 		pthread_mutex_unlock(&mutex);
 		usleep(50);
     	}; /* ciclo finchè pacman non perde tutte le vite */
-
+		
 }
 
 
@@ -94,45 +95,80 @@ void gestoreProiettili(pos_C *posizioni){
 	int w =buff_size;
 	int ok = 0;
 	pos_B ausilio;
+	
+	scriviLog(buff_size,"Dimensione buffer proiettili dentro gestore proiettili =");
 
 	for(int i = 0; i<buff_size; i++){
+		scriviLog(BBP[i].vivo,"Gestore proiettili-proiettile vivo = ");
+		scriviLog(BBP[i].ready,"Gestore proiettili-proiettile ready = ");
+		scriviLog(BBP[i].checked,"Gestore proiettili-proiettile checked = ");
+		scriviLog(BBP[i].t_vivo,"Gestore proiettili-thread proiettile vivo = ");
+		scriviLog(BBP[i].id,"Gestore proiettili-id proiettile = ");
+		scriviLog(i,"Gestore proiettili-valore indice i = ");
+
 		ok = 1;
-		if(BBP[i].ready && BBP[i].vivo){
-			scriviLog(buff_size,"Dentro gestore proiettili in ciclo buff");
-			scriviLog(BBP[i].id,"Dentro gestore proiettili in ciclo id");
+		
+		if((BBP[i].ready && BBP[i].vivo) && !(BBP[i].checked)){
+			scriviLog(666,"Hey zio sono entrato finalmente");
+			for(int j = 1; j < buff_size ; j++){
+				if(i != j){
+					if(BBP[i].x == BBP[j].x && BBP[i].y == BBP[j].y && BBP[j].vivo){
+						BBP[i].vivo = 0;
+						BBP[j].vivo = 0;
+						BBP[i].t_vivo = 0;
+						BBP[j].t_vivo = 0;
+						scriviLog(BBP[i].id,"Sto mettendo t_vivo a zero al proiettile con id");
+
+						mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
+						mvaddch(BBP[j].y_old,BBP[j].x_old ,' ');
+						mvaddch(BBP[i].y,BBP[i].x ,' ');
+						mvaddch(BBP[j].y,BBP[j].x ,' ');
+						ausilio = BBPcut(BBP[i].id);
+						ausilio = BBPcut(BBP[j].id);
+												
+					}
+				}
+
+
+			}
 
 			for(int j = 0; j < numero_caramelline+1 ; j++){
 				if(BBP[i].x == caramelline[j].y && BBP[i].y == caramelline[j].x){
 					BBP[i].vivo = 0;
+					BBP[i].t_vivo = 0;
+					scriviLog(BBP[i].id,"Sto uccidendo il proiettile perche hitta una caramellina->proiettile con id");
+					
 					mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
-					refresh();
-					ok = 0;					
+					ausilio = BBPcut(BBP[i].id);
+					refresh();			
 				}
 			}
-			
-			if(ring[BBP[i].x][BBP[i].y] == '#'){
-				BBP[i].vivo = 0;
-				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
-				//mvaddch(BBP[i].y,BBP[i].x ,' ');
-				refresh();
-				ok = 0;	
-			}
 
-			if(BBP[i].x == posizioni[0].xn && BBP[i].y == posizioni[0].yn){
+			if(BBP[i].x == posizioni[0].xn && BBP[i].y == posizioni[0].yn && BBP[i].vivo){
 				num_vite--;
 				posizioni[0].xn =MAXX_R/2;
 				posizioni[0].yn =MAXY_R/2;
 				BBP[i].vivo = 0;
+				BBP[i].t_vivo = 0;
+				scriviLog(BBP[i].id,"Sto mettendo t_vivo a zero al proiettile con id");
+
 				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
+				ausilio = BBPcut(BBP[i].id);
 				//mvaddch(BBP[i].y,BBP[i].x ,' ');
 				refresh();
 				ok = 0;
 			}
 			for(int j = 1; j < 6 ; j++){
-				if(BBP[i].x == BFC[j].xn && BBP[i].y == BFC[j].yn){
+				if(BBP[i].x ==  BFC[j].xn && BBP[i].y == BFC[j].yn  && BBP[i].vivo){
 					BFC[j].xn=14;
 					BFC[j].yn =21-i;
 					BBP[i].vivo = 0;
+					BBP[i].t_vivo = 0;
+					scriviLog(BBP[i].id,"Sto mettendo t_vivo a zero al proiettile con id");
+					scriviLog(BBP[j].id,"Sto mettendo t_vivo a zero al proiettile con id");
+
+					scriviLog(BFC[j].chi,"Fantasma colpito");
+					ausilio = BBPcut(BBP[i].id);
 
 					mvaddch(BFC[j].yn,BFC[j].xn,'M');
 					mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
@@ -146,14 +182,21 @@ void gestoreProiettili(pos_C *posizioni){
 				mvaddch(BBP[i].y,BBP[i].x ,'o');
 				refresh();
 			}
-			if(!(BBP[i].vivo)){
-				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
-				//mvaddch(BBP[i].y,BBP[i].x ,' ');
-				//mvaddch(BBP[i].y,BBP[i].x ,'+');
-				refresh();
-			}
+
 			refresh();
 			scriviLog(BBP[i].id,"Sto uscendo dal ciclo id");
+			
+			BBP[i].checked = 1;
+		}
+
+		if( !(BBP[i].vivo  && BBP[i].t_vivo)){
+			mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
+			//mvaddch(BBP[i].y,BBP[i].x ,' ');
+			mvaddch(BBP[i].y,BBP[i].x ,'x');
+			BBP[i].t_vivo = 0;
+			scriviLog(BBP[i].id,"Il proiettile è entrato nel ciclo di controllo con vivo 0 e t_vivo 1, id proiettile");
+			ausilio = BBPcut(BBP[i].id);
+			refresh();
 		}
 
 	}
@@ -238,6 +281,7 @@ void stampante(pos_C *posizioni){
 	for(int i = 0; i<buffC_size ; i++){	
 		mvaddch(posizioni[i].yn,posizioni[i].xn,posizioni[i].chi);
 		refresh();
+		//scriviLog(posizioni[i].chi,"Sto stampando =");
 
 	}
 	pthread_mutex_unlock(&mutex); //fine sezione critica

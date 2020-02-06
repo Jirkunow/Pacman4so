@@ -164,8 +164,8 @@ void pacmanMove(pos *pos_pacman){
 	for(i = 0; i < (numero_caramelline + 1); i++ ){
 		if(caramelline[i].x == pos_pacman->y  && caramelline[i].y == pos_pacman->x ){			
 			punti += punti_caramelline;
-			caramelline[i].x = MAXX_R*2;
-			caramelline[i].y = MAXY_R*2;
+			caramelline[i].x = -1;
+			caramelline[i].y = -1;
 			numero_caramelline--;
 
 		}
@@ -185,6 +185,9 @@ void BBPadd(pos_B proiettile){
 	BBP[proiettile.id].dir = proiettile.dir;
 	BBP[proiettile.id].id = proiettile.id;
 	BBP[proiettile.id].ready = proiettile.ready;
+	BBP[proiettile.id].checked = proiettile.checked;
+	BBP[proiettile.id].t_vivo = proiettile.t_vivo;
+	BBP[proiettile.id].id_t = proiettile.id_t;
 
 
 	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
@@ -206,14 +209,18 @@ void BBPaggiorna(pos_B proiettile){
 	BBP[proiettile.id].ready = proiettile.ready;
 
 
-    	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 }
 
 pos_B BBPcut(int pos){
 	pos_B *cout = &(BBP[pos]);
-
+	
+	scriviLog(pos,"Sto eliminando il proiettile con id");	
+	
 	cout = NULL;
 	cout = (pos_B*)calloc(sizeof(pos_B*),1);
+
+	pthread_cancel(BBP[pos].id_t);
 	
 	if(buff_size > 0){
 		for(int i = pos; i<buff_size-1;i++){
@@ -222,9 +229,12 @@ pos_B BBPcut(int pos){
 		}
 	}
 
-	buff_size--;
+	if(	buff_size > 0){
+		buff_size--;
+	}
 
-
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+	
 	/*pos_B cout;
 	pthread_mutex_lock(&mutex);//Inizio sezione critica
 	
@@ -261,20 +271,26 @@ int BBPricerca(pos_B proiettile,int i){
 void * Shot(void *parametri){
 	pos_B ausilio;
 	int *id = (int*) parametri;
-
+	int exit = 1;
 	scriviLog(BBP[*id].id,"Shot con id");
 	scriviLog(BBP[*id].vivo,"Shot con vivo");
+	scriviLog(BBP[*id].t_vivo,"Shot con t_vivo");
 
 	BBP[*id].ready = 1;
 	do{
-		scriviLog(BBP[*id].id,"Shot con id");
-		scriviLog(BBP[*id].x,"Shot con x");
-		scriviLog(BBP[*id].y,"Shot con y");
+		//scriviLog(BBP[*id].id,"Shot con id");
+		//scriviLog(BBP[*id].x,"Shot con x");
+		//scriviLog(BBP[*id].y,"Shot con y");
 
 		BBP[*id] = incrementaProiettile(BBP[*id]);
-		*id = BBP[*id].id;
+
+		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/				
 
 		scriviLog(BBP[*id].vivo,"Shot con vivo");
+		scriviLog(BBP[*id].t_vivo,"Shot con T_vivo = ");
+		scriviLog(*id,"Shot con id  ");
+
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/		
 
 	}while(BBP[*id].vivo == 1);
 
@@ -283,7 +299,8 @@ void * Shot(void *parametri){
 	
 	scriviLog(buff_size,"buff_size (PRIMA)");	
 
-	ausilio = BBPcut(BBP[*id].id);
+
+	//ausilio = BBPcut(BBP[*id].id);
 
 	scriviLog(buff_size,"buff_size (DOPO)");
 		
@@ -292,65 +309,81 @@ void * Shot(void *parametri){
 pos_B incrementaProiettile(pos_B proiettile){
 
 	if(BBP[proiettile.id].ready){
-		usleep(500000);
+		usleep(500);
 	}
 
 	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/		
 
 	proiettile.x_old=proiettile.x;
-	proiettile.y_old=proiettile.y;	
+	proiettile.y_old=proiettile.y;
 
-	switch(proiettile.dir){
-
-		case'U':
-			if(proiettile.y>1){
-				proiettile.y = proiettile.y-1;
-			}else{
-				proiettile.vivo = 0;
-			}
-
-			if(ring[proiettile.y][proiettile.x] == '#'){
+	if(proiettile.vivo && proiettile.checked){
+		scriviLog(proiettile.id,"Incremento proiettile id ");	
+		scriviLog(proiettile.t_vivo,"Il proiettile incrementato ha t_vivo ");		
+		switch(proiettile.dir){
+		
+			case'U':
+				if(proiettile.y>1){
+					proiettile.y = proiettile.y-1;
+				}else{
 					proiettile.vivo = 0;
-			}
-			break;
+				}
 
-		case'D':
-			if(proiettile.y<MAXX_R-1){
-				proiettile.y = proiettile.y +1;
-
-			}else{
-				proiettile.vivo = 0;
-			}
-
-			if(ring[proiettile.y][proiettile.x] == '#'){
-				proiettile.vivo = 0;
-			}
-			break;
-
-		case'L':
-			if(proiettile.x>1){
-				proiettile.x =proiettile.x-1;
-			}else{
-				proiettile.vivo = 0;
-			}
-
-			if(ring[proiettile.y][proiettile.x] == '#'){
+				if(ring[proiettile.y][proiettile.x] == '#'){
 					proiettile.vivo = 0;
-			}
-			break;
-		case'R':
-			if(proiettile.x < MAXY_R){
-				proiettile.x =proiettile.x+1;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+				}
+				break;
 
-			}else{
-				proiettile.vivo = 0;
-			}
+			case'D':
+				if(proiettile.y<MAXX_R-1){
+					proiettile.y = proiettile.y +1;
 
-			if(ring[proiettile.y][proiettile.x] == '#'){
-				proiettile.vivo = 0;
-			}
-			break;
-	}
+				}else{
+					proiettile.vivo = 0;
+				}
+
+				if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+				}
+				break;
+
+			case'L':
+				if(proiettile.x>1){
+					proiettile.x =proiettile.x-1;
+				}else{
+					proiettile.vivo = 0;
+				}
+
+				if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+				}
+				break;
+			case'R':
+				if(proiettile.x < MAXY_R){
+					proiettile.x =proiettile.x+1;
+
+				}else{
+					proiettile.vivo = 0;
+				}
+
+				if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+				}
+				break;
+		}		
+		
+		proiettile.checked = 0;
+	}	
+	scriviLog(proiettile.t_vivo,"Il proiettile POST incremento ha t_vivo ");	
+	
 	pthread_mutex_unlock(&mutex);/*fine sezione critica*/	
 
 	return proiettile;
@@ -458,10 +491,6 @@ void BFCaggiorna(pos_C *pg){
 
 
 
-
-
-
-
 void scriviLog(int msg, char* nome){
   FILE *fd;
 
@@ -493,6 +522,8 @@ void trigger(pos_C *pg){
 		proiettile[i].x = pg->xn;
 		proiettile[i].y = pg->yn;
 		proiettile[i].ready = 0;
+		proiettile[i].checked = 1;
+		proiettile[i].t_vivo = 1;
 
 		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 
@@ -503,15 +534,10 @@ void trigger(pos_C *pg){
 		//scriviLog(proiettile[i].y,"sei dentro trigger post incremento:proiettile[i].y");
 		id_bulli_dim++;
 
-		pthread_create(&(id_bulli[id_bulli_dim-1]),NULL,&Shot,(void*)&(BBP[buff_size-1].id ));
+		pthread_create(&(BBP[buff_size-1].id_t),NULL,&Shot,(void*)&(BBP[buff_size-1].id ));
 
 		usleep(500);
 	}	
-
-
-
-
-
 
 }
 

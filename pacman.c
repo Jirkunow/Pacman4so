@@ -1,322 +1,565 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <curses.h>
-#include <pthread.h>
-#include <time.h>
+#include "pacman.h"
 
-
-#define PASSO 1 						/* Entita spostamento della vespa */
-#define SU 65 							/* Freccia su */
-#define GIU 66 						/* Freccia giu */
-#define SINISTRA 68					/* Freccia sinsitra */
-#define DESTRA 67					/* Freccia destra */
-#define MAXX_R 35 						/* Numero di colonne dello schermo */
-#define MAXY_R 30						/* Numero di righe dello schermo */
-
-/*Struttura che identifica la posizione di vespa e contadino*/
-typedef struct
-{
-  int x;
-  int y;
-}pos;
-
-typedef struct
-{
-  pos *pac;
-  pos *gost;
-}pos_A;
 
 char ring[MAXX_R][MAXY_R] = {
 {'#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#'},
 {'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ','#','#',' ',' ',' ','#','#','#',' ',' ',' ',' ',' ',' ','#','#','#',' ',' ',' ','#','#',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ','#','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#','#',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#','#','#','#','#','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#','#','#','#','#','#',' ',' ',' ','#',' ',' ',' ',' ','#','#',' ',' ',' ',' ','#',' ',' ',' ','#','#','#','#','#','#'},
-{' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' '},
-{' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' '},
-{' ',' ',' ',' ',' ','#',' ',' ',' ','#','#','#',' ',' ',' ',' ',' ',' ','#','#','#',' ',' ',' ','#',' ',' ',' ',' ',' '},
-{' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' '},
-{'#','#','#','#','#','#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#','#','#','#','#','#'},
-{' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '},
-{' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '},
-{' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' '},
-{'#','#','#','#','#','#',' ',' ',' ','#',' ',' ',' ','#',' ',' ','#',' ',' ',' ','#',' ',' ',' ','#','#','#','#','#','#'},
-{' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ','#','#','#','#',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' '},
-{' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#',' ',' ',' ',' ',' '},
-{'#','#','#','#','#','#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#','#','#','#','#','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#','#','#','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#'},
-{'#',' ',' ',' ','#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#',' ',' ',' ','#'},
-{'#',' ',' ',' ','#',' ',' ',' ','#','#','#','#','#',' ',' ',' ',' ','#','#','#','#','#',' ',' ',' ','#',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
-{'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
+{'#',' ','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',' ','#'},
+{'#',' ','.',' ',' ',' ',' ','.',' ',' ',' ',' ',' ','.','.','.','.',' ',' ',' ',' ',' ','.',' ',' ',' ',' ','.',' ','#'},
+{'#',' ','.',' ','#','#',' ','.',' ','#','#','#',' ','.','.','.','.',' ','#','#','#',' ','.',' ','#','#',' ','.',' ','#'},
+{'#',' ','.',' ',' ',' ',' ','.',' ',' ',' ',' ',' ','.','.','.','.',' ',' ',' ',' ',' ','.',' ',' ',' ',' ','.',' ','#'},
+{'#',' ','.','.','.','.','.','.',' ','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',' ','#'},
+{'#',' ','.',' ',' ',' ',' ','.',' ','.','.','.','.','.','.','.','.','.','.','.',' ',' ','.',' ',' ',' ',' ','.',' ','#'},
+{'#',' ','.',' ','#','#',' ','.',' ','.','.','.','.','.','.','.','.','.','.','.','.','.','.',' ','#','#',' ','.',' ','#'},
+{'#',' ','.',' ',' ',' ',' ','.','.','.','.',' ',' ',' ',' ',' ',' ',' ',' ','.',' ','.','.',' ',' ',' ',' ','.',' ','#'},
+{'#',' ','.','.','.','.','.','.','.','.','.',' ','#','#','#','#','#','#',' ','.','.','.','.','.','.','.','.','.',' ','#'},
+{'#',' ',' ',' ',' ',' ',' ','.',' ',' ',' ','.',' ',' ','#','#',' ',' ','.',' ',' ',' ','.',' ',' ',' ',' ',' ',' ','#'},
+{'#','#','#','#','#','#',' ','.',' ','#',' ','.',' ',' ','#','#',' ','.','.',' ','#',' ','.',' ','#','#','#','#','#','#'},
+{' ',' ',' ',' ',' ','#',' ','.',' ','#',' ','.','.','.',' ',' ','.','.','.',' ','#',' ','.',' ','#',' ',' ',' ',' ',' '},
+{' ',' ',' ',' ',' ','#',' ','.',' ','#',' ',' ',' ','.','.','.','.',' ',' ',' ','#',' ','.',' ','#',' ',' ',' ',' ',' '},
+{' ',' ',' ',' ',' ','#',' ','.',' ','#','#','#',' ','.','.','.','.',' ','#','#','#',' ','.',' ','#',' ',' ',' ',' ',' '},
+{' ',' ',' ',' ',' ','#',' ','.',' ','#',' ',' ',' ','.','.','.','.',' ',' ',' ','#',' ','.',' ','#',' ',' ',' ',' ',' '},
+{'#','#','#','#','#','#',' ','.',' ','#',' ','.','.','.','.','.','.','.','.',' ','#',' ','.',' ','#','#','#','#','#','#'},
+{' ',' ',' ',' ',' ',' ',' ','.',' ',' ',' ','.',' ',' ',' ',' ',' ',' ','.',' ',' ',' ','.',' ',' ',' ',' ',' ',' ',' '},
+{'.','.','.','.','.','.','.','.','.','.','.','.',' ','#',' ',' ','#',' ','.','.','.','.','.','.','.','.','.','.','.','.'},
+{' ',' ',' ',' ',' ',' ',' ','.',' ',' ',' ','.',' ','#',' ',' ','#',' ','.',' ',' ',' ','.',' ',' ',' ',' ',' ',' ',' '},
+{'#','#','#','#','#','#',' ','.',' ','#',' ','.',' ','#',' ',' ','#',' ','.',' ','#',' ','.',' ','#','#','#','#','#','#'},
+{' ',' ',' ',' ',' ','#',' ','.',' ','#',' ','.',' ','#','#','#','#',' ','.',' ','#',' ','.',' ','#',' ',' ',' ',' ',' '},
+{' ',' ',' ',' ',' ','#',' ','.',' ','#',' ','.',' ',' ',' ',' ',' ',' ','.',' ','#',' ','.',' ','#',' ',' ',' ',' ',' '},
+{'#','#','#','#','#','#',' ','.',' ','#',' ','.','.','.','.','.','.','.','.',' ','#',' ','.',' ','#','#','#','#','#','#'},
+{'#',' ',' ',' ',' ',' ',' ','.',' ',' ',' ','.',' ',' ',' ',' ',' ',' ','.',' ',' ',' ','.',' ',' ',' ',' ',' ',' ','#'},
+{'#',' ','.','.','.','.','.','.','.','.','.','.',' ','#','#','#','#',' ','.','.','.','.','.','.','.','.','.','.',' ','#'},
+{'#',' ','.',' ',' ',' ','.','.','.','.','.','.','.',' ',' ',' ',' ','.','.','.','.','.','.','.',' ',' ',' ','.',' ','#'},
+{'#',' ','.',' ','#',' ','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',' ','#',' ','.',' ','#'},
+{'#',' ','.',' ','#',' ','.','.',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','.','.',' ','#',' ','.',' ','#'},
+{'#',' ','.',' ','#',' ','.',' ','#','#','#','#','#',' ',' ',' ',' ','#','#','#','#','#',' ','.',' ','#',' ','.',' ','#'},
+{'#',' ','.',' ',' ',' ','.','.',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','.',' ',' ',' ',' ','.',' ','#'},
+{'#',' ','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',' ','#'},
 {'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
 {'#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#'}
 };
+
+int num_ghost = 0;
 int num_vite=3;
+int PASSO = 1;									/* Entita spostamento */
 int punti = 0;
+int punti_caramelloni = 10;
+int numero_caramelline = 0;
+int punti_caramelline = 1;
+int buff_size = 0;
+pos pos_caramelloni[3] = {};
+pos *caramelline = NULL;
+pos_B *BBP =NULL;
+pos_C *BFC = NULL;
+int buffC_size = 0;
+int id_personaggi = 0;
+int id_bulletti = 0;
+int morte = 0;
+pthread_t id_bulli[4000];
+int id_bulli_dim = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;/*creo e inizializzo il semaforo*/
 
-
-void * ghost(void * parametri);
-void * pacman(void * parametri);
-void * areaGioco(void * parametri);
-
-
-
-int main(){
-	int i,j;
-	pthread_t pacmanID, gostID, areaGiocoID;
-	pos pos_gost,pos_pacman;
-	pos_A area;
-
-    srand(time((time_t*)NULL));
-    initscr();
-    noecho();
-    curs_set(0);
-
-	area.pac = &pos_pacman;
-	area.gost = &pos_gost;
-
-	pthread_create(&pacmanID,NULL,&pacman,(void*)&pos_pacman);
-	pthread_create(&gostID,NULL,&ghost,(void*)&pos_gost);
-	pthread_create(&areaGiocoID,NULL,&areaGioco,(void*)&area);
-	
-	while(num_vite > 0);
-	refresh();
-	clear();
-	mvprintw(MAXY_R/2,MAXX_R/2,"GAME OVER");
-	usleep(5000000);
-	endwin();
-}
-
-
-
 void * pacman(void * parametri){
-    pos * pos_pacman = (pos*) parametri;
-    pos_pacman->x=MAXX_R/2;
-    pos_pacman->y=MAXY_R/2;
+    pos *pos_pacman = (pos*) parametri;
 
-    pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-    mvaddch(pos_pacman->y,pos_pacman->x,'C');
-    refresh();
-    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 
-	while(num_vite>0)
-	{
-		char c;
-		c=getch();
+	while(num_vite>0){
 
-		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-		mvaddch(pos_pacman->y,pos_pacman->x,' ');
-		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+		pthread_mutex_lock(&mutex);//Inizio sezione critica
 
-			switch(c){// Mi sposto in base al tasto che ho premuto
-					 // controllando ogni volta di non uscire dai limiti
-				case SU:
-					if(pos_pacman->y>1){
-						pos_pacman->y-=1;
-					}
+		BFC[0].x_old = pos_pacman->x;
+		BFC[0].y_old = pos_pacman->y;
 
-					if(ring[pos_pacman->y][pos_pacman->x]  == '#'){
-						pos_pacman->y+=1;
-					}
+		pos_pacman->x = BFC[0].xn;
+		pos_pacman->y = BFC[0].yn;
 
-					break;
+		pthread_mutex_unlock(&mutex);//Fine sezione critica
 
-				case GIU:
-					if(pos_pacman->y<MAXY_R-1){
-						pos_pacman->y+=1; 
-					}
+		pacmanMove(pos_pacman);
 
-					if(ring[pos_pacman->y][pos_pacman->x]  == '#'){
-						pos_pacman->y-=1;
-					}
-					break;
-
-				case SINISTRA:
-					if(pos_pacman->x>1){
-						pos_pacman->x-=1;
-					}
-
-					if(ring[pos_pacman->y][pos_pacman->x] == '#'){
-						pos_pacman->x+=1;
-					}	
-
-					break;
-
-				case DESTRA:
-
-					if(pos_pacman->x < MAXX_R-1){
-					pos_pacman->x+=1;
-					}
-
-					if(ring[pos_pacman->y][pos_pacman->x] == '#'){
-						pos_pacman->x-=1;
-					}
-					break;
-
-		}
-		
-		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-		mvaddch(pos_pacman->y,pos_pacman->x,'C');
+		pthread_mutex_lock(&mutex);//Inizio sezione critica
+		mvaddch(BFC[0].y_old,BFC[0].x_old,' ');
 		refresh();
-		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+		
+		BFC[0].xn = pos_pacman->x;
+		BFC[0].yn = pos_pacman->y;
+
+		pthread_mutex_unlock(&mutex);//Fine sezione critica
 
 	}
 }
 
-void * ghost(void * parametri){
+void pacmanMove(pos *pos_pacman){
 
-  pos * pos_gost = (pos*) parametri;/*Converto la mia variabile in input*/
-  int dx,dy;
-  pos_gost->x=15;//La vespa inizierà in una posizione casuale all'interno dello schermo
-  pos_gost->y=21;
+	int i = 0;
+	char c;
 
-  pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-  mvaddch(pos_gost->y,pos_gost->x,'M');
-  refresh();
-  pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 
-  while(num_vite>0)
-  {
-	
-    usleep(500000);	
-    pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-    mvaddch(pos_gost->y,pos_gost->x,' ');
-    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+	c=getch();
 
-    switch(rand()%3)
-    {
-      case 0://se rand%3 mi ha dato 0 non mi sposto in orizzontale
-        dx=0;
-        break;
-      case 1://se rand%3 mi ha dato 1 mi muovo a destra
-        dx=PASSO;
-        break;
-      case 2://se rand%3 mi ha dato 2 mi muovo a sinistra
-        dx=-PASSO;
-        break;
-      default:
-        perror("Caso impossibile.\n");
-    }
+	pos_pacman->x = BFC[0].xn;
+	pos_pacman->y = BFC[0].yn;
 
-    if(pos_gost->x+dx<1 || pos_gost->x+dx>=MAXX_R){ // Se il movimento mi fa uscire dai limiti inverto la direzione
-		dx=-dx;
-	}
-	
-	if(ring[pos_gost->y][pos_gost->x+dx]=='#'){
-		dx=-dx;
-	}else{
-    	pos_gost->x+=dx;                                      
-	}
-
-    switch(rand()%3)
-    {
-      case 0://se rand%3 mi ha dato 0 non mi sposto in verticale
-        dy=0;
-        break;
-      case 1://se rand%3 mi ha dato 1 mi muovo in basso
-        dy=PASSO;
-        break;
-      case 2://se rand%3 mi ha dato 2 mi muovo in alto
-        dy=-PASSO;
-        break;
-      default:
-        perror("Caso impossibile.\n");
-    }
-
-    if(pos_gost->y+dy<1 || pos_gost->y+dy>=MAXY_R){// Se il movimento mi fa uscire dai limiti inverto la direzione
-		dy=-dy;
-    }
-                                      
-	if(ring[pos_gost->y+dy][pos_gost->x]=='#'){
-		dy=-dy;
-	}else{
-		pos_gost->y+=dy;
-	}
-
-    pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-    mvaddch(pos_gost->y,pos_gost->x,'M');
-    refresh();
-    pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
-
-  }
-
-}
-
-void * areaGioco(void * parametri){
-	int i,j;
-	pos_A * posizioni = (pos_A *) parametri;
-	pos pos_caramelloni[3];
-
-  	pthread_mutex_lock(&mutex);
-
-  	for(i = 0 ; i< MAXX_R ; i++){
-		for(j = 0 ; j < MAXY_R ; j++){
-			mvaddch(i,j,ring[i][j]);
-     		refresh();
-			usleep(700);
-		}
-  	}
-  	pthread_mutex_unlock(&mutex);
-	while (num_vite>0){
-
-		time_t tempo_salvato = time((time_t*)NULL);
-
-		if((time((time_t*)NULL)-tempo_salvato)>10){                                         
-			
-			for(i=0;i<3;++i){                      
-				pthread_mutex_lock(&mutex);
-				mvaddch(pos_caramelloni[i].y,pos_caramelloni[i].x,' ');//cancello le vecchie trappole
-				pthread_mutex_unlock(&mutex);
-		 	}
-	  		
-			for(i = 0; i<3;i++){
-				do{
-				
-					pos_caramelloni[i].y = rand()%MAXY_R;
-					pos_caramelloni[i].x = rand()%MAXX_R;
-				
-				}while(ring[pos_caramelloni[i].y][pos_caramelloni[i].x] == '#');					
+	switch(c){// Mi sposto in base al tasto che ho premuto
+		 // controllando ogni volta di non uscire dai limiti
+		case SU:
+			if(pos_pacman->y>1){
+				pos_pacman->y-=1;
 			}
 
-			for(i=0;i<3;++i){
-				pthread_mutex_lock(&mutex);
-				mvaddch(pos_caramelloni[i].y,pos_caramelloni[i].x,'$');//cancello le vecchie trappole
-				pthread_mutex_unlock(&mutex);
-		  	}
+			if(ring[pos_pacman->y][pos_pacman->x]  == '#'){
+				pos_pacman->y+=1;
+			}
 
-		  	tempo_salvato=time((time_t*)NULL);//Mi salvo il tempo in cui le ho generate		
+			break;
+
+		case GIU:
+			if(pos_pacman->y<MAXX_R-1){
+				pos_pacman->y+=1; 
+			}
+
+			if(ring[pos_pacman->y][pos_pacman->x]  == '#'){
+				pos_pacman->y-=1;
+			}
+			break;
+
+		case SINISTRA:
+			if(pos_pacman->x>1){
+				pos_pacman->x-=1;
+			}
+
+			if(ring[pos_pacman->y][pos_pacman->x] == '#'){
+				pos_pacman->x+=1;
+			}	
+
+			break;
+
+		case DESTRA:
+
+			if(pos_pacman->x < MAXY_R){
+			pos_pacman->x+=1;
+			}
+
+
+			if(ring[pos_pacman->y][pos_pacman->x] == '#'){
+				pos_pacman->x-=1;
+			}
+			break;
+		case SPACE:
+			scriviLog(SPACE,"hai premuto spazio");
+			trigger(&(BFC[0]));
+			break;
+
+	}
+
+	for(i = 0; i <3 ; i++){
+		if(pos_caramelloni[i].x == pos_pacman->y  && pos_caramelloni[i].y == pos_pacman->x ){//Caramellone preso 
+			punti += punti_caramelloni;
+			pos_caramelloni[i].x = MAXX_R*2;
+			pos_caramelloni[i].y = MAXY_R*2;
+
 		}
-		/*controllo la collisione fra pacman e fantasma*/
-		if((posizioni->pac->x == posizioni->gost->x) && posizioni->pac->y == posizioni->gost->y){
-			num_vite--;
-			posizioni->pac->x=MAXX_R/2;
-    		posizioni->pac->y =MAXY_R/2;
+	}
+
+	for(i = 0; i < (numero_caramelline + 1); i++ ){
+		if(caramelline[i].x == pos_pacman->y  && caramelline[i].y == pos_pacman->x ){			
+			punti += punti_caramelline;
+			caramelline[i].x = -1;
+			caramelline[i].y = -1;
+			numero_caramelline--;
+
 		}
+	}
 
-
-
-		pthread_mutex_lock(&mutex);
-		mvprintw(0,MAXY_R+3,"Vite: %d",num_vite);/*Stampo il numero di vite*/
-	  	curs_set(0);
-	  	refresh();
-		pthread_mutex_unlock(&mutex);
-		usleep(50000);
-    }; /* ciclo finchè il contadino non perde tutte le vite */
 }
+
+void BBPadd(pos_B proiettile){
+
+	if(proiettile.vivo){
+		scriviLog(buff_size,"Buff size in BBPadd");
+		scriviLog(proiettile.id,"ID diproiettile in BBPadd");
+			
+		BBP[proiettile.id].vivo = proiettile.vivo;
+		BBP[proiettile.id].x = proiettile.x;
+		BBP[proiettile.id].y = proiettile.y;
+		BBP[proiettile.id].dir = proiettile.dir;
+		BBP[proiettile.id].id = proiettile.id;
+		BBP[proiettile.id].ready = proiettile.ready;
+		BBP[proiettile.id].checked = proiettile.checked;
+		BBP[proiettile.id].t_vivo = proiettile.t_vivo;
+		BBP[proiettile.id].id_t = proiettile.id_t;
+
+	}
+
+}
+
+void BBPaggiorna(pos_B proiettile){
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+
+	scriviLog(buff_size,"Buff size in BBPaggiorna");
+	usleep(500);
+	
+	//BBP = (pos_B*) realloc(BBP,sizeof(pos_B)*buff_size);
+		
+	BBP[proiettile.id].vivo = proiettile.vivo;
+	BBP[proiettile.id].x = proiettile.x;
+	BBP[proiettile.id].y = proiettile.y;
+	BBP[proiettile.id].dir = proiettile.dir;
+	BBP[proiettile.id].id = proiettile.id;
+	BBP[proiettile.id].ready = proiettile.ready;
+
+
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+}
+
+void BBPcut(int pos){
+	
+	pos = BBPfindID(pos);
+
+	scriviLog(pos,"Sto eliminando il proiettile con id");
+	scriviLogBull(BBP[pos].x,BBP[pos].y,"Sto per essere eliminato",BBP[pos].dir,BBP[pos].id,pos);	
+
+	pthread_cancel(BBP[pos].id_t);
+	
+	if(buff_size > 0){
+		for(int i = pos; i<buff_size-1;i++){			
+			BBP[i] = BBP[i+1];
+		}
+	}
+
+	if(	buff_size > 0){
+		buff_size--;
+	}
+
+
+	scriviLogBull(BBP[pos].x,BBP[pos].y,"Ora nella mia posizione c'e' ",BBP[pos].dir,BBP[pos].id,pos);
+	for(int i = pos+1; i<buff_size-1;i++){
+		scriviLogBull(BBP[i].x,BBP[i].y,"Scambi sul buffer ",BBP[i].dir,BBP[i].id,i);
+	}
+	
+}
+
+pos_B* BBPinit(){
+
+	BBP = (pos_B*)calloc(sizeof(pos_B*),4000);
+
+	return BBP;
+}
+
+int BBPricerca(pos_B proiettile,int i){
+
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+	if((proiettile.x == BBP[i].x) && (proiettile.y == BBP[i].y)){
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/		
+		return 1;
+	}
+	return 0;
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+}
+
+void * Shot(void *parametri){
+	pos_B *aux = (pos_B*) malloc(sizeof(pos_B*));
+	int *indice = (int*) parametri;
+	int id = *indice;
+	int *ret_val = (int*) malloc(sizeof(int*));
+	int exit = 1;
+					
+	scriviLog(BBP[*indice].id,"Shot con id");
+
+	do{
+		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/		
+		*indice = BBPfindID(id);
+		if(*indice != -7){
+			BBP[*indice] = incrementaProiettile(BBP[*indice]);
+
+			scriviLogBull(BBP[*indice].x,BBP[*indice].y,"Sono il proiettile",BBP[*indice].dir,BBP[*indice].id,*indice);
+
+		}
+
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+			
+
+	}while(BBP[*indice].vivo == 1 && *indice != -7);
+
+	scriviLog(BBP[*indice].id,"Shot con id (DOPO)");
+	scriviLog(BBP[*indice].vivo,"Shot con vivo (DOPO)");
+	
+	scriviLog(buff_size,"buff_size (PRIMA)");	
+
+
+	//BBPcut(BBP[*id].id);
+
+	scriviLog(buff_size,"buff_size (DOPO)");
+		
+}
+
+pos_B incrementaProiettile(pos_B proiettile){		
+
+	proiettile.x_old=proiettile.x;
+	proiettile.y_old=proiettile.y;
+
+	if(proiettile.vivo && proiettile.checked){
+		scriviLog(proiettile.id,"Incremento proiettile id ");	
+		scriviLog(proiettile.t_vivo,"Il proiettile incrementato ha t_vivo ");		
+		switch(proiettile.dir){
+		
+			case'U':
+				if(proiettile.y>1){
+					proiettile.y = proiettile.y-1;
+				}else{
+					proiettile.vivo = 0;
+				}
+
+				if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+					
+					buff_size--;					
+					
+					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
+				}
+				break;
+
+			case'D':
+				if(proiettile.y<MAXX_R-1){
+					proiettile.y = proiettile.y +1;
+
+				}else{
+					proiettile.vivo = 0;
+				}
+
+				if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+
+					buff_size--;					
+
+					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
+				}
+				break;
+
+			case'L':
+				if(proiettile.x>1){
+					proiettile.x =proiettile.x-1;
+				}else{
+					proiettile.vivo = 0;
+				}
+
+				if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+
+					buff_size--;					
+
+					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
+				}
+				break;
+			case'R':
+				if(proiettile.x < MAXY_R){
+					proiettile.x =proiettile.x+1;
+
+				}else{
+					proiettile.vivo = 0;
+				}
+
+				if(ring[proiettile.y][proiettile.x] == '#'){
+					proiettile.vivo = 0;
+					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
+					refresh();
+
+					buff_size--;					
+
+					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
+				}
+				break;
+		}
+		scriviLogBull(proiettile.x,proiettile.y,"Incremento Proiettile ",proiettile.dir,proiettile.id,proiettile.id);
+		scriviLog(proiettile.t_vivo,"Il proiettile POST incremento ha t_vivo ");			
+		proiettile.checked = 0;
+	}	
+
+	return proiettile;
+}
+
+int BBPfindID(int id){
+
+	for(int i = 0; i<buff_size;i++){
+		if(BBP[i].id == id){			
+			return i;		
+		}
+	}
+	return -7;
+}
+
+pos_C* BFCinit(){
+	pos_C fantasmi[3];
+	BFC =(pos_C*) malloc(sizeof(pos_C)*7);
+
+	BFC[0].chi = 'C';
+	BFC[0].vivo = 1;
+	BFC[0].id = id_personaggi;
+	id_personaggi++;
+	BFC[0].xn = MAXX_R/2;
+    	BFC[0].yn = MAXY_R/2; 
+	buffC_size++;
+
+	for(int i = 0; i < 3; i++){
+		
+		fantasmi[i].id = i+1;
+		id_personaggi++;
+		fantasmi[i].vivo = 1;
+		fantasmi[i].chi = 'M';
+		fantasmi[i].xn = 14;
+		fantasmi[i].yn = 21 - i;
+		
+		BFCadd(fantasmi[i]);	
+
+			
+	}
+		
+
+	return BFC;
+}
+
+void BFCadd(pos_C pg){
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+	
+	buffC_size++;
+
+	BFC[buffC_size-1].id = pg.id;
+	BFC[buffC_size-1].vivo = pg.vivo;
+	BFC[buffC_size-1].chi = pg.chi;
+	BFC[buffC_size-1].xn = pg.xn;
+	BFC[buffC_size-1].yn = pg.yn;
+
+   	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+}
+
+pos_C BFCfindID(int id, int *index){
+	int i = 0;
+	pos_C errore;
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+	for(i = 0; i < buffC_size; i++){		
+		if(BFC[i].id == id){
+			*index = i;
+  		 	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+			return BFC[i];
+		}
+	}
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+	return errore;
+
+}
+
+int BFCconfornta(pos_C pg,int i){
+
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+	if((pg.xn == BFC[i].xn) && (pg.yn == BFC[i].yn)){
+		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/		
+		return 1;
+	}
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+	return 0;
+}
+
+
+void BFCaggiorna(pos_C *pg){
+
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+
+	BFC[pg->id].id = pg->id;
+	BFC[pg->id].vivo = pg->vivo;
+	BFC[pg->id].chi = pg->chi;
+	BFC[pg->id].xn = pg->xn;
+	BFC[pg->id].yn = pg->yn;
+
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+
+}
+
+
+
+void scriviLog(int msg, char* nome){
+  FILE *fd;
+
+  fd=fopen("log.txt", "a");
+  if( fd==NULL ){
+    perror("Errore in apertura del file");
+    exit(1);
+  }
+
+  fprintf(fd, "%s = %d\n\n",nome, msg);
+
+  fclose(fd);
+}
+
+void trigger(pos_C *pg){
+	char direzioni[4] = {'U','D','L','R'};
+	pos_B proiettile[4];
+
+	scriviLog(SPACE,"sei dentro trigger");
+	
+	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+
+	for(int i = 0; i<4; i++){
+
+		
+		buff_size++;
+		proiettile[i].vivo = 1;
+		proiettile[i].dir = direzioni[i];
+		proiettile[i].id = id_bulli_dim;
+		proiettile[i].x = pg->xn;
+		proiettile[i].y = pg->yn;
+		proiettile[i].ready = 0;
+		proiettile[i].checked = 1;
+		proiettile[i].t_vivo = 1;
+
+		
+
+		//scriviLog(proiettile[i].x ,"sei dentro trigger for zone:proiettile[i].x ");
+		proiettile[i] = incrementaProiettile(proiettile[i]);
+
+		if(proiettile[i].vivo){
+			BBPadd(proiettile[i]);
+		}else{
+			buff_size--;
+
+			scriviLogBull(proiettile[i].x,proiettile[i].y, "Proiettile non inserito perche non vivo, dir", proiettile[i].dir, proiettile[i].id,i);
+	}
+		//scriviLog(proiettile[i].y,"sei dentro trigger post incremento:proiettile[i].y");
+
+		if(proiettile[i].vivo = 1){
+			pthread_create(&(BBP[id_bulli_dim-1].id_t),NULL,&Shot,(void*)&(id_bulli_dim));
+		}
+		id_bulli_dim++;
+	}	
+
+	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+}
+
+void scriviLogBull(int x,int y, char* nome, char direzione, int id,int indice){
+  FILE *fd;
+
+  fd=fopen("logBullet.txt", "a");
+  if( fd==NULL ){
+    perror("Errore in apertura del file");
+    exit(1);
+  }
+
+  fprintf(fd, "%s direzione %c  x = %d y = %d id = %d indice = %d\n\n",nome, direzione, x, y,id,indice);
+
+  fclose(fd);
+}
+
+
+
+
+
+
+
 
 
 

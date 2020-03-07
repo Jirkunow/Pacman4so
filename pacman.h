@@ -69,12 +69,12 @@ extern pos_C *BFC;
 extern int buffC_size;
 extern int id_personaggi;
 extern int morte;
-extern pthread_t id_bulli[4000];
+extern int id_bulli[4000];
 extern int id_bulli_dim;
 
 void * pacman(void * parametri);
 void pacmanMove(pos *pos_pacman);
-void BBPadd(pos_B proiettile);
+int BBPadd(pos_B proiettile);
 void BBPcut(int pos);
 pos_B* BBPinit();
 int BBPricerca(pos_B proiettile,int i);

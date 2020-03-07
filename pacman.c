@@ -55,7 +55,7 @@ int buffC_size = 0;
 int id_personaggi = 0;
 int id_bulletti = 0;
 int morte = 0;
-pthread_t id_bulli[4000];
+int id_bulli[4000];
 int id_bulli_dim = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;/*creo e inizializzo il semaforo*/
 
@@ -105,6 +105,8 @@ void pacmanMove(pos *pos_pacman){
 		case SU:
 			if(pos_pacman->y>1){
 				pos_pacman->y-=1;
+			}else{
+				pos_pacman->y = MAXY_R;			
 			}
 
 			if(ring[pos_pacman->y][pos_pacman->x]  == '#'){
@@ -114,9 +116,12 @@ void pacmanMove(pos *pos_pacman){
 			break;
 
 		case GIU:
-			if(pos_pacman->y<MAXX_R-1){
+			if(pos_pacman->y<MAXX_R){
 				pos_pacman->y+=1; 
+			}else{
+				pos_pacman->y = 0;
 			}
+			
 
 			if(ring[pos_pacman->y][pos_pacman->x]  == '#'){
 				pos_pacman->y-=1;
@@ -126,6 +131,8 @@ void pacmanMove(pos *pos_pacman){
 		case SINISTRA:
 			if(pos_pacman->x>1){
 				pos_pacman->x-=1;
+			}else{
+				pos_pacman->x = MAXX_R;
 			}
 
 			if(ring[pos_pacman->y][pos_pacman->x] == '#'){
@@ -137,7 +144,9 @@ void pacmanMove(pos *pos_pacman){
 		case DESTRA:
 
 			if(pos_pacman->x < MAXY_R){
-			pos_pacman->x+=1;
+				pos_pacman->x+=1;
+			}else{
+				pos_pacman->x = 0;			
 			}
 
 
@@ -146,7 +155,6 @@ void pacmanMove(pos *pos_pacman){
 			}
 			break;
 		case SPACE:
-			scriviLog(SPACE,"hai premuto spazio");
 			trigger(&(BFC[0]));
 			break;
 
@@ -173,30 +181,37 @@ void pacmanMove(pos *pos_pacman){
 
 }
 
-void BBPadd(pos_B proiettile){
-
-	if(proiettile.vivo){
-		scriviLog(buff_size,"Buff size in BBPadd");
-		scriviLog(proiettile.id,"ID diproiettile in BBPadd");
-			
-		BBP[proiettile.id].vivo = proiettile.vivo;
-		BBP[proiettile.id].x = proiettile.x;
-		BBP[proiettile.id].y = proiettile.y;
-		BBP[proiettile.id].dir = proiettile.dir;
-		BBP[proiettile.id].id = proiettile.id;
-		BBP[proiettile.id].ready = proiettile.ready;
-		BBP[proiettile.id].checked = proiettile.checked;
-		BBP[proiettile.id].t_vivo = proiettile.t_vivo;
-		BBP[proiettile.id].id_t = proiettile.id_t;
-
+int BBPadd(pos_B proiettile){
+	int i = 0;
+	
+	while(BBP[i].vivo && (i < buff_size)){
+		
+		i++;	
 	}
+
+
+	if(i < 4000){
+
+		BBP[i].vivo = proiettile.vivo;
+		BBP[i].x = proiettile.x;
+		BBP[i].y = proiettile.y;
+		BBP[i].dir = proiettile.dir;
+		BBP[i].id = proiettile.id;
+		BBP[i].ready = proiettile.ready;
+		BBP[i].checked = proiettile.checked;
+		BBP[i].t_vivo = proiettile.t_vivo;
+		BBP[i].id_t = proiettile.id_t;
+		
+		scriviLogBull(BBP[i].x,BBP[i].y,"Inserimento proiettile: ",BBP[i].dir,BBP[i].id,i);
+	}
+	
+
+	return 1;
 
 }
 
 void BBPaggiorna(pos_B proiettile){
 	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
-
-	scriviLog(buff_size,"Buff size in BBPaggiorna");
 	usleep(500);
 	
 	//BBP = (pos_B*) realloc(BBP,sizeof(pos_B)*buff_size);
@@ -213,17 +228,22 @@ void BBPaggiorna(pos_B proiettile){
 }
 
 void BBPcut(int pos){
-	
-	pos = BBPfindID(pos);
 
-	scriviLog(pos,"Sto eliminando il proiettile con id");
+	scriviLog(pos,"BBPcut-> eliminazione proiettile con indice");
 	scriviLogBull(BBP[pos].x,BBP[pos].y,"Sto per essere eliminato",BBP[pos].dir,BBP[pos].id,pos);	
 
-	pthread_cancel(BBP[pos].id_t);
+	//pthread_cancel(BBP[pos].id_t);
 	
 	if(buff_size > 0){
-		for(int i = pos; i<buff_size-1;i++){			
+		for(int i = pos; i<buff_size-1;i++){
+			
+			scriviLogBull(BBP[i].x,BBP[i].y,"Scambi sul buffer \n",BBP[i].dir,BBP[i].id,i);	
+
+			scriviLogBull(BBP[i+1].x,BBP[i+1].y,"Scambi sul buffer \n",BBP[i+1].dir,BBP[i+1].id,i+1);	
+			
+		
 			BBP[i] = BBP[i+1];
+
 		}
 	}
 
@@ -234,7 +254,7 @@ void BBPcut(int pos){
 
 	scriviLogBull(BBP[pos].x,BBP[pos].y,"Ora nella mia posizione c'e' ",BBP[pos].dir,BBP[pos].id,pos);
 	for(int i = pos+1; i<buff_size-1;i++){
-		scriviLogBull(BBP[i].x,BBP[i].y,"Scambi sul buffer ",BBP[i].dir,BBP[i].id,i);
+		scriviLogBull(BBP[i].x,BBP[i].y,"Scambi sul buffer \n",BBP[i].dir,BBP[i].id,i);
 	}
 	
 }
@@ -258,38 +278,32 @@ int BBPricerca(pos_B proiettile,int i){
 }
 
 void * Shot(void *parametri){
-	pos_B *aux = (pos_B*) malloc(sizeof(pos_B*));
-	int *indice = (int*) parametri;
-	int id = *indice;
-	int *ret_val = (int*) malloc(sizeof(int*));
+	//pos_B *proiettile = (pos_B*) parametri;
+	//int id = proiettile->id;
+	int *indice = (int*) malloc(sizeof(int*));
 	int exit = 1;
+	int *id = (int*) parametri;
 					
-	scriviLog(BBP[*indice].id,"Shot con id");
-
 	do{
+
 		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/		
-		*indice = BBPfindID(id);
+		*indice = BBPfindID(*id);
+		scriviLog(*indice,"Shot, indice dello shot");
+		scriviLog(*id,"Shot, id dello shot");
+		
 		if(*indice != -7){
 			BBP[*indice] = incrementaProiettile(BBP[*indice]);
 
-			scriviLogBull(BBP[*indice].x,BBP[*indice].y,"Sono il proiettile",BBP[*indice].dir,BBP[*indice].id,*indice);
+			scriviLogBull(BBP[*indice].x,BBP[*indice].y,"Sono il proiettile",BBP[*indice].dir,BBP[*indice].id,*id);
 
 		}
 
 		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
-			
+		usleep(1000000);			
 
 	}while(BBP[*indice].vivo == 1 && *indice != -7);
 
-	scriviLog(BBP[*indice].id,"Shot con id (DOPO)");
-	scriviLog(BBP[*indice].vivo,"Shot con vivo (DOPO)");
-	
-	scriviLog(buff_size,"buff_size (PRIMA)");	
-
-
-	//BBPcut(BBP[*id].id);
-
-	scriviLog(buff_size,"buff_size (DOPO)");
+	scriviLog(BBP[*indice].id,"Id shot fuori while");
 		
 }
 
@@ -299,8 +313,8 @@ pos_B incrementaProiettile(pos_B proiettile){
 	proiettile.y_old=proiettile.y;
 
 	if(proiettile.vivo && proiettile.checked){
-		scriviLog(proiettile.id,"Incremento proiettile id ");	
-		scriviLog(proiettile.t_vivo,"Il proiettile incrementato ha t_vivo ");		
+		scriviLog(proiettile.id,"Incremento proiettile id ");
+		
 		switch(proiettile.dir){
 		
 			case'U':
@@ -377,8 +391,9 @@ pos_B incrementaProiettile(pos_B proiettile){
 				break;
 		}
 		scriviLogBull(proiettile.x,proiettile.y,"Incremento Proiettile ",proiettile.dir,proiettile.id,proiettile.id);
-		scriviLog(proiettile.t_vivo,"Il proiettile POST incremento ha t_vivo ");			
+			
 		proiettile.checked = 0;
+		proiettile.ready = 1;
 	}	
 
 	return proiettile;
@@ -499,8 +514,9 @@ void scriviLog(int msg, char* nome){
 void trigger(pos_C *pg){
 	char direzioni[4] = {'U','D','L','R'};
 	pos_B proiettile[4];
+	int id;
 
-	scriviLog(SPACE,"sei dentro trigger");
+	scriviLog(SPACE,"Sei dentro trigger");
 	
 	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
 
@@ -510,34 +526,33 @@ void trigger(pos_C *pg){
 		buff_size++;
 		proiettile[i].vivo = 1;
 		proiettile[i].dir = direzioni[i];
-		proiettile[i].id = id_bulli_dim;
+		proiettile[i].id = id_bulli_dim; 
 		proiettile[i].x = pg->xn;
 		proiettile[i].y = pg->yn;
 		proiettile[i].ready = 0;
 		proiettile[i].checked = 1;
 		proiettile[i].t_vivo = 1;
 
-		
+		id_bulli[id_bulli_dim] = id_bulli_dim;
 
-		//scriviLog(proiettile[i].x ,"sei dentro trigger for zone:proiettile[i].x ");
 		proiettile[i] = incrementaProiettile(proiettile[i]);
 
 		if(proiettile[i].vivo){
-			BBPadd(proiettile[i]);
+			id = BBPadd(proiettile[i]);
 		}else{
-			buff_size--;
-
 			scriviLogBull(proiettile[i].x,proiettile[i].y, "Proiettile non inserito perche non vivo, dir", proiettile[i].dir, proiettile[i].id,i);
-	}
-		//scriviLog(proiettile[i].y,"sei dentro trigger post incremento:proiettile[i].y");
+		}
 
-		if(proiettile[i].vivo = 1){
-			pthread_create(&(BBP[id_bulli_dim-1].id_t),NULL,&Shot,(void*)&(id_bulli_dim));
+		scriviLog(proiettile[i].vivo,"Richiesta lancio thread shot status vita");
+
+		if(proiettile[i].vivo == 1){
+			scriviLog(id_bulli[id_bulli_dim],"Richiesta lancio thread shot id");
+			pthread_create(&(BBP[id].id_t),NULL,&Shot,(void*)&(id_bulli[id_bulli_dim]));
 		}
 		id_bulli_dim++;
 	}	
-
 	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
+	usleep(1000000);
 }
 
 void scriviLogBull(int x,int y, char* nome, char direzione, int id,int indice){

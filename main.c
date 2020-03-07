@@ -73,8 +73,9 @@ void * areaGioco(void * parametri){
 		mvprintw(2,MAXY_R+3,"caramelline restanti: %d",numero_caramelline);/*Stampo il numero di vite*/
 	  	curs_set(0);
 	  	refresh();
+
 		pthread_mutex_unlock(&mutex);
-		usleep(50);
+		usleep(5000);
     	}while (num_vite>0); /* ciclo finchè pacman non perde tutte le vite */
 		
 }
@@ -83,21 +84,14 @@ void * areaGioco(void * parametri){
 void gestoreProiettili(pos_C *posizioni){
 	int ok = 0;
 	pos_B ausilio;
-	
-	scriviLog(buff_size,"Dimensione buffer proiettili dentro gestore proiettili =");
 
 	for(int i = 0; i<buff_size; i++){
-		//scriviLog(BBP[i].vivo,"Gestore proiettili-proiettile vivo = ");
-		//scriviLog(BBP[i].ready,"Gestore proiettili-proiettile ready = ");
-		//scriviLog(BBP[i].checked,"Gestore proiettili-proiettile checked = ");
-		//scriviLog(BBP[i].t_vivo,"Gestore proiettili-thread proiettile vivo = ");
-		//scriviLog(BBP[i].id,"Gestore proiettili-id proiettile = ");
-		//scriviLog(i,"Gestore proiettili-valore indice i = ");
 
 		ok = 1;
 		
-		if((BBP[i].ready && BBP[i].vivo) && !(BBP[i].checked)){
-			scriviLog(666,"Hey zio sono entrato finalmente");
+		if((BBP[i].ready == 1 && BBP[i].vivo == 1 ) && !(BBP[i].checked == 1)){
+			scriviLog(buff_size,"Dentro gestore proiettili, if passato");
+
 			for(int j = 1; j < buff_size ; j++){
 				if(i != j){
 					if(BBP[i].x == BBP[j].x && BBP[i].y == BBP[j].y && BBP[j].vivo){
@@ -114,8 +108,8 @@ void gestoreProiettili(pos_C *posizioni){
 						mvaddch(BBP[j].y_old,BBP[j].x_old ,' ');
 						mvaddch(BBP[i].y,BBP[i].x ,' ');
 						mvaddch(BBP[j].y,BBP[j].x ,' ');
-						BBPcut(BBP[i].id);
-						BBPcut(BBP[j].id);
+						BBPcut(i);
+						BBPcut(j);
 						ok = 0;						
 					}
 				}
@@ -133,7 +127,7 @@ void gestoreProiettili(pos_C *posizioni){
 					mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
 					refresh();
 
-					BBPcut(BBP[i].id);
+					BBPcut(i);
 					ok = 0;				
 				}
 			}
@@ -149,7 +143,7 @@ void gestoreProiettili(pos_C *posizioni){
 				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
 				mvaddch(BBP[i].y,BBP[i].x ,' ');
 				refresh();
-				BBPcut(BBP[i].id);
+				BBPcut(i);
 				ok = 0;
 			}
 			for(int j = 1; j < 6 ; j++){
@@ -164,25 +158,15 @@ void gestoreProiettili(pos_C *posizioni){
 					mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
 					mvaddch(BBP[i].y,BBP[i].x ,' ');
 					refresh();
-					BBPcut(BBP[i].id);
+					BBPcut(i);
 					ok = 0;
-				}		
+				}
 			}
-			if(ok){
-				mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
-				mvaddch(BBP[i].y,BBP[i].x ,'o');
-				refresh();
-				scriviLog(BBP[i].id,"Sto uscendo dal ciclo id");
-			}else{
-				scriviLog(666,"Proiettile morto");
-			}
-
-			refresh();
 			
 			BBP[i].checked = 1;
 		}
 
-		if( !(BBP[i].vivo  && BBP[i].t_vivo)){
+		/*if( !(BBP[i].vivo  && BBP[i].t_vivo)){
 			mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
 			//mvaddch(BBP[i].y,BBP[i].x ,' ');
 			mvaddch(BBP[i].y,BBP[i].x ,'x');
@@ -190,8 +174,7 @@ void gestoreProiettili(pos_C *posizioni){
 			scriviLog(BBP[i].id,"Il proiettile è entrato nel ciclo di controllo con vivo 0 e t_vivo 1, id proiettile");
 			// BBPcut(BBP[i].id);
 			refresh();
-		}
-
+		}*/
 	}
 
 }
@@ -271,14 +254,17 @@ void stampante(pos_C *posizioni){
 		mvaddch(posizioni[i].yn,posizioni[i].xn,posizioni[i].chi);
 		refresh();
 		//scriviLog(posizioni[i].chi,"Sto stampando =");
-
 	}
 
-	
+	for(int i = 0; i<buff_size; i++){
+		if(BBP[i].vivo){
+			mvaddch(BBP[i].y_old,BBP[i].x_old ,' ');
+			mvaddch(BBP[i].y,BBP[i].x ,'o');
+			refresh();
+			scriviLogBull(BBP[i].x,BBP[i].y,"Proiettile stampato",BBP[i].dir,BBP[i].id,i);
+		}
+	}
 }
-
-
-
 
 
 

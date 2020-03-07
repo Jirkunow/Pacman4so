@@ -2,7 +2,7 @@
 
 void * ghost(void *parametri){		
 	pos_C* pos_char = (pos_C*) parametri;/*Converto la mia variabile in input*/
-	int dx,dy;
+	int dx,dy,rand_try;
 	int i = 0;
 	int id = pos_char->id;
 	pos* pacman = (pos*) malloc(sizeof(pos));;
@@ -60,6 +60,13 @@ void * ghost(void *parametri){
 
 		if(pos_char->xn  != pos_char->x_old  || pos_char->yn  != pos_char->y_old){
 			BFCaggiorna(pos_char);
+		}
+
+		
+		rand_try = rand()%97;
+
+		if(rand_try == 0){
+			trigger(pos_char);
 		}
 
 /*		pthread_mutex_lock(&mutex);//Inizio sezione critica
@@ -170,6 +177,8 @@ pos Passo_ghost(pos *ghost, pos *pacman){
 				break;
 		}		
 	}
+
+
 	return *ghost;
 	
 }

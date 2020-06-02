@@ -1,16 +1,21 @@
 #include "ghost.h"
 
 void * ghost(void *parametri){		
-	pos_C* pos_char = (pos_C*) parametri;/*Converto la mia variabile in input*/
+	int *id_ = (int*) parametri;/*Converto la mia variabile in input*/
 	int dx,dy,rand_try;
 	int i = 0;
-	int id = pos_char->id;
+	int id = *id_;
 	pos* pacman = (pos*) malloc(sizeof(pos));;
 	pos* pos_gost = (pos*) malloc(sizeof(pos));
 	int sulla_caramella = 0;
+	pos_C* pos_char = &(BFC[id]);
 
 	pos_gost->x = pos_char->xn;
 	pos_gost->y = pos_char->yn;
+	pos_char->id = id;
+	pos_char->chi = 'M';
+
+	scriviLog(pos_char->id,"Sono nato Fantasmino:");
 
 	usleep(500);
 
@@ -27,12 +32,12 @@ void * ghost(void *parametri){
 		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 
 		for(i = 0; i < numero_caramelline+1; i++){
-			if(caramelline[i].x == pos_gost->y  && caramelline[i].y == pos_gost->x ){
-					sulla_caramella = 1;
+			if(ring[pos_gost->y][pos_gost->x] == '.'){
+				sulla_caramella = 1;
 			}
 		}
 	
-    	usleep(500000);	
+usleep(500000);	
 
 		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
 		mvaddch(pos_gost->y,pos_gost->x,' ');
@@ -58,9 +63,9 @@ void * ghost(void *parametri){
 		pos_char->xn = pos_gost->x;
 		pos_char->yn = pos_gost->y;	
 
-		if(pos_char->xn  != pos_char->x_old  || pos_char->yn  != pos_char->y_old){
+		/*if(pos_char->xn  != pos_char->x_old  || pos_char->yn  != pos_char->y_old){
 			BFCaggiorna(pos_char);
-		}
+		}*/
 
 		
 		rand_try = rand()%97;

@@ -38,7 +38,9 @@ char ring[MAXX_R][MAXY_R] = {
 {'#',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',' ','#'},
 {'#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#','#'}
 };
-
+int vittoria = 0;
+int ps=1;
+int music_status = 0;
 int num_ghost = 0;
 int num_vite=3;
 int PASSO = 1;									/* Entita spostamento */
@@ -57,45 +59,26 @@ int id_bulletti = 0;
 int morte = 0;
 int id_bulli[4000];
 int id_bulli_dim = 0;
+int id_g[6];
+int _id_g_dim = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;/*creo e inizializzo il semaforo*/
+char c;
 
 void * pacman(void * parametri){
     pos *pos_pacman = (pos*) parametri;
+    pthread_t id_t;
 
+    pthread_create(&(id_t),NULL,&movimentoPacman,(void*)(pos_pacman));
 
 	while(num_vite>0){
-
-		pthread_mutex_lock(&mutex);//Inizio sezione critica
-
-		BFC[0].x_old = pos_pacman->x;
-		BFC[0].y_old = pos_pacman->y;
-
-		pos_pacman->x = BFC[0].xn;
-		pos_pacman->y = BFC[0].yn;
-
-		pthread_mutex_unlock(&mutex);//Fine sezione critica
-
-		pacmanMove(pos_pacman);
-
-		pthread_mutex_lock(&mutex);//Inizio sezione critica
-		mvaddch(BFC[0].y_old,BFC[0].x_old,' ');
-		refresh();
-		
-		BFC[0].xn = pos_pacman->x;
-		BFC[0].yn = pos_pacman->y;
-
-		pthread_mutex_unlock(&mutex);//Fine sezione critica
-
+		c=getch();
 	}
 }
 
 void pacmanMove(pos *pos_pacman){
 
 	int i = 0;
-	char c;
 
-
-	c=getch();
 
 	pos_pacman->x = BFC[0].xn;
 	pos_pacman->y = BFC[0].yn;
@@ -103,7 +86,7 @@ void pacmanMove(pos *pos_pacman){
 	switch(c){// Mi sposto in base al tasto che ho premuto
 		 // controllando ogni volta di non uscire dai limiti
 		case SU:
-			if(pos_pacman->y>1){
+			if(pos_pacman->y>0){
 				pos_pacman->y-=1;
 			}else{
 				pos_pacman->y = MAXY_R;			
@@ -129,7 +112,7 @@ void pacmanMove(pos *pos_pacman){
 			break;
 
 		case SINISTRA:
-			if(pos_pacman->x>1){
+			if(pos_pacman->x>0){
 				pos_pacman->x-=1;
 			}else{
 				pos_pacman->x = MAXX_R;
@@ -160,23 +143,61 @@ void pacmanMove(pos *pos_pacman){
 
 	}
 
+	pthread_mutex_lock(&mutex);//Inizio sezione critica
+
+
 	for(i = 0; i <3 ; i++){
 		if(pos_caramelloni[i].x == pos_pacman->y  && pos_caramelloni[i].y == pos_pacman->x ){//Caramellone preso 
 			punti += punti_caramelloni;
 			pos_caramelloni[i].x = MAXX_R*2;
 			pos_caramelloni[i].y = MAXY_R*2;
-
+			musiche(3);
 		}
 	}
 
 	for(i = 0; i < (numero_caramelline + 1); i++ ){
-		if(caramelline[i].x == pos_pacman->y  && caramelline[i].y == pos_pacman->x ){			
+		if(ring[pos_pacman->y][pos_pacman->x] == '.'){			
 			punti += punti_caramelline;
-			caramelline[i].x = -1;
-			caramelline[i].y = -1;
-			numero_caramelline--;
-
+			ring[pos_pacman->y][pos_pacman->x] = ' ';
+			numero_caramelline = numero_caramelline-1 ;
+			musiche(4);
+			
+			if(numero_caramelline == 0){
+				vittoria = 1;
+			}
 		}
+	}
+	
+	pthread_mutex_unlock(&mutex);//Fine sezione critica
+
+}
+
+void * movimentoPacman(void *parametri){
+	pos *pos_pacman = (pos*) parametri;
+
+	while(num_vite>0){
+		
+		pthread_mutex_lock(&mutex);//Inizio sezione critica
+
+		BFC[0].x_old = pos_pacman->x;
+		BFC[0].y_old = pos_pacman->y;
+
+		pos_pacman->x = BFC[0].xn;
+		pos_pacman->y = BFC[0].yn;
+
+		pthread_mutex_unlock(&mutex);//Fine sezione critica
+
+		pacmanMove(pos_pacman);
+
+		pthread_mutex_lock(&mutex);//Inizio sezione critica
+		mvaddch(BFC[0].y_old,BFC[0].x_old,' ');
+		refresh(); 
+		
+		BFC[0].xn = pos_pacman->x;
+		BFC[0].yn = pos_pacman->y;
+
+		pthread_mutex_unlock(&mutex);//Fine sezione critica
+		usleep(300000);
 	}
 
 }
@@ -185,7 +206,6 @@ int BBPadd(pos_B proiettile){
 	int i = 0;
 	
 	while(BBP[i].vivo && (i < buff_size)){
-		
 		i++;	
 	}
 
@@ -201,8 +221,8 @@ int BBPadd(pos_B proiettile){
 		BBP[i].checked = proiettile.checked;
 		BBP[i].t_vivo = proiettile.t_vivo;
 		BBP[i].id_t = proiettile.id_t;
-		
-		scriviLogBull(BBP[i].x,BBP[i].y,"Inserimento proiettile: ",BBP[i].dir,BBP[i].id,i);
+		buff_size++;
+
 	}
 	
 
@@ -229,19 +249,11 @@ void BBPaggiorna(pos_B proiettile){
 
 void BBPcut(int pos){
 
-	scriviLog(pos,"BBPcut-> eliminazione proiettile con indice");
-	scriviLogBull(BBP[pos].x,BBP[pos].y,"Sto per essere eliminato",BBP[pos].dir,BBP[pos].id,pos);	
-
 	//pthread_cancel(BBP[pos].id_t);
 	
 	if(buff_size > 0){
 		for(int i = pos; i<buff_size-1;i++){
-			
-			scriviLogBull(BBP[i].x,BBP[i].y,"Scambi sul buffer \n",BBP[i].dir,BBP[i].id,i);	
-
-			scriviLogBull(BBP[i+1].x,BBP[i+1].y,"Scambi sul buffer \n",BBP[i+1].dir,BBP[i+1].id,i+1);	
-			
-		
+	
 			BBP[i] = BBP[i+1];
 
 		}
@@ -249,12 +261,6 @@ void BBPcut(int pos){
 
 	if(	buff_size > 0){
 		buff_size--;
-	}
-
-
-	scriviLogBull(BBP[pos].x,BBP[pos].y,"Ora nella mia posizione c'e' ",BBP[pos].dir,BBP[pos].id,pos);
-	for(int i = pos+1; i<buff_size-1;i++){
-		scriviLogBull(BBP[i].x,BBP[i].y,"Scambi sul buffer \n",BBP[i].dir,BBP[i].id,i);
 	}
 	
 }
@@ -288,23 +294,20 @@ void * Shot(void *parametri){
 
 		pthread_mutex_lock(&mutex);/*Inizio sezione critica*/		
 		*indice = BBPfindID(*id);
-		scriviLog(*indice,"Shot, indice dello shot");
-		scriviLog(*id,"Shot, id dello shot");
-		
+
 		if(*indice != -7){
 			BBP[*indice] = incrementaProiettile(BBP[*indice]);
+			if(BBP[*indice].vivo == 0){
+				BBPcut(*indice);
 
-			scriviLogBull(BBP[*indice].x,BBP[*indice].y,"Sono il proiettile",BBP[*indice].dir,BBP[*indice].id,*id);
-
+			}
 		}
 
 		pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
-		usleep(1000000);			
+		usleep(250000);			
 
 	}while(BBP[*indice].vivo == 1 && *indice != -7);
 
-	scriviLog(BBP[*indice].id,"Id shot fuori while");
-		
 }
 
 pos_B incrementaProiettile(pos_B proiettile){		
@@ -313,7 +316,6 @@ pos_B incrementaProiettile(pos_B proiettile){
 	proiettile.y_old=proiettile.y;
 
 	if(proiettile.vivo && proiettile.checked){
-		scriviLog(proiettile.id,"Incremento proiettile id ");
 		
 		switch(proiettile.dir){
 		
@@ -327,11 +329,8 @@ pos_B incrementaProiettile(pos_B proiettile){
 				if(ring[proiettile.y][proiettile.x] == '#'){
 					proiettile.vivo = 0;
 					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
-					refresh();
-					
-					buff_size--;					
-					
-					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
+					refresh();					
+
 				}
 				break;
 
@@ -346,11 +345,8 @@ pos_B incrementaProiettile(pos_B proiettile){
 				if(ring[proiettile.y][proiettile.x] == '#'){
 					proiettile.vivo = 0;
 					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
-					refresh();
+					refresh();				
 
-					buff_size--;					
-
-					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
 				}
 				break;
 
@@ -364,11 +360,8 @@ pos_B incrementaProiettile(pos_B proiettile){
 				if(ring[proiettile.y][proiettile.x] == '#'){
 					proiettile.vivo = 0;
 					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
-					refresh();
+					refresh();				
 
-					buff_size--;					
-
-					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
 				}
 				break;
 			case'R':
@@ -382,15 +375,11 @@ pos_B incrementaProiettile(pos_B proiettile){
 				if(ring[proiettile.y][proiettile.x] == '#'){
 					proiettile.vivo = 0;
 					mvaddch(proiettile.y_old,proiettile.x_old ,' ');
-					refresh();
+					refresh();					
 
-					buff_size--;					
-
-					scriviLogBull(proiettile.x,proiettile.y,"Muro colpito!!",proiettile.dir,proiettile.id,proiettile.id);
 				}
 				break;
 		}
-		scriviLogBull(proiettile.x,proiettile.y,"Incremento Proiettile ",proiettile.dir,proiettile.id,proiettile.id);
 			
 		proiettile.checked = 0;
 		proiettile.ready = 1;
@@ -400,18 +389,20 @@ pos_B incrementaProiettile(pos_B proiettile){
 }
 
 int BBPfindID(int id){
-
+		
 	for(int i = 0; i<buff_size;i++){
-		if(BBP[i].id == id){			
+		if(BBP[i].id == id){
 			return i;		
 		}
 	}
+
 	return -7;
 }
 
 pos_C* BFCinit(){
-	pos_C fantasmi[3];
+	pos_C fantasmi[5];
 	BFC =(pos_C*) malloc(sizeof(pos_C)*7);
+	int i,j;
 
 	BFC[0].chi = 'C';
 	BFC[0].vivo = 1;
@@ -421,10 +412,10 @@ pos_C* BFCinit(){
     	BFC[0].yn = MAXY_R/2; 
 	buffC_size++;
 
-	for(int i = 0; i < 3; i++){
-		
-		fantasmi[i].id = i+1;
-		id_personaggi++;
+	id_g[0] = 0;
+
+	for(i = 0; i < 3; i++){
+
 		fantasmi[i].vivo = 1;
 		fantasmi[i].chi = 'M';
 		fantasmi[i].xn = 14;
@@ -434,23 +425,38 @@ pos_C* BFCinit(){
 
 			
 	}
+
+	do{
+		i = rand()%MAXX_R;
+		j = rand()%MAXY_R;		
+	}while(ring[i][j] != '.' );
+
+	fantasmi[4].vivo = 1;
+	fantasmi[4].chi = 'M';
+	fantasmi[4].xn = i;
+	fantasmi[4].yn = j;
+	
+	BFCadd(fantasmi[4]);
+	buffC_size--;	
 		
 
 	return BFC;
 }
 
 void BFCadd(pos_C pg){
-	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
 	
 	buffC_size++;
+	id_personaggi++;
 
-	BFC[buffC_size-1].id = pg.id;
+	BFC[buffC_size-1].id = id_personaggi;
 	BFC[buffC_size-1].vivo = pg.vivo;
 	BFC[buffC_size-1].chi = pg.chi;
 	BFC[buffC_size-1].xn = pg.xn;
 	BFC[buffC_size-1].yn = pg.yn;
+	BFC[buffC_size-1].x_old = pg.xn;
+	BFC[buffC_size-1].y_old = pg.yn;
+	scriviLog(BFC[buffC_size-1].id,"Fantasmino skerzo aggiunto in BFC");	
 
-   	pthread_mutex_unlock(&mutex);/*Fine sezione critica*/
 }
 
 pos_C BFCfindID(int id, int *index){
@@ -515,15 +521,13 @@ void trigger(pos_C *pg){
 	char direzioni[4] = {'U','D','L','R'};
 	pos_B proiettile[4];
 	int id;
-
-	scriviLog(SPACE,"Sei dentro trigger");
 	
 	pthread_mutex_lock(&mutex);/*Inizio sezione critica*/
+	
+	musiche(2);
 
 	for(int i = 0; i<4; i++){
 
-		
-		buff_size++;
 		proiettile[i].vivo = 1;
 		proiettile[i].dir = direzioni[i];
 		proiettile[i].id = id_bulli_dim; 
@@ -539,14 +543,9 @@ void trigger(pos_C *pg){
 
 		if(proiettile[i].vivo){
 			id = BBPadd(proiettile[i]);
-		}else{
-			scriviLogBull(proiettile[i].x,proiettile[i].y, "Proiettile non inserito perche non vivo, dir", proiettile[i].dir, proiettile[i].id,i);
 		}
 
-		scriviLog(proiettile[i].vivo,"Richiesta lancio thread shot status vita");
-
 		if(proiettile[i].vivo == 1){
-			scriviLog(id_bulli[id_bulli_dim],"Richiesta lancio thread shot id");
 			pthread_create(&(BBP[id].id_t),NULL,&Shot,(void*)&(id_bulli[id_bulli_dim]));
 		}
 		id_bulli_dim++;
@@ -569,10 +568,34 @@ void scriviLogBull(int x,int y, char* nome, char direzione, int id,int indice){
   fclose(fd);
 }
 
+void musiche(int colonna){
 
+	switch(colonna){
+		case 0:
+			system("ffplay Main_Loop.mp3 -nodisp -nostats -hide_banner &");
+		break;
 
+		case 1:
+		break;
 
+		case 2:
+			system("pkill -f ffplay");
+			system("ffplay Sparo\\ 4\\ \\(Multiple\\).aif -nodisp -nostats -hide_banner &");			
+		break;
+			
+		case 3:
+			system("pkill -f ffplay");
+			system("ffplay Coin\\ BONUS.aif -nodisp -nostats -hide_banner &");
+		break;
+		
+		case 4:
+			system("pkill -f ffplay");
+			system("ffplay Coins\\ 6.aif -nodisp -nostats -hide_banner &");
+		break;
 
+	}
+
+}
 
 
 

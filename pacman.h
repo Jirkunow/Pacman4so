@@ -6,7 +6,8 @@
 #include <time.h>
 #include <math.h>
 #include <string.h>
-						
+
+		
 #define SU 65 							/* Freccia su */
 #define GIU 66 						    /* Freccia giu */
 #define SINISTRA 68					    /* Freccia sinsitra */
@@ -14,10 +15,17 @@
 #define SPACE ' '						/* Barra spazio */
 #define MAXX_R 35 				  		/* Numero di colonne dello schermo */
 #define MAXY_R 30						/* Numero di righe dello schermo */
+#define SFONDO     1
+#define PACMAN_     2
+#define FANTASMA  3
+#define PROIETTILE    4
+#define DOLLARONE  5				
+#define CARAMELLINE  6
+#define MURO 7
 
 typedef struct{
   int x;
-  int y;
+  int y; 
 }pos;
 
 typedef struct{
@@ -50,9 +58,10 @@ typedef struct{
   int y_old;
 
 }pos_C;
-
+extern int music_status;
+extern int vittoria;
 extern char ring[MAXX_R][MAXY_R];
-
+extern int ps;
 extern int num_ghost;
 extern int num_vite;
 extern int PASSO;									/* Entita spostamento */
@@ -71,6 +80,9 @@ extern int id_personaggi;
 extern int morte;
 extern int id_bulli[4000];
 extern int id_bulli_dim;
+extern char c;
+extern int id_g[6];
+extern int id_g_dim;
 
 void * pacman(void * parametri);
 void pacmanMove(pos *pos_pacman);
@@ -88,6 +100,8 @@ pos_C* BFCinit();
 void BFCadd(pos_C pg);
 void trigger(pos_C* pg);
 void BBPaggiorna(pos_B proiettile);
+void * movimentoPacman(void *parametri);
+void musiche(int colonna);
 
 void scriviLog(int msg, char* nome);
 void scriviLogBull(int x,int y, char* nome, char direzione, int id,int indice);
